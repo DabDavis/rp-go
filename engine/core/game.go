@@ -31,9 +31,29 @@ func NewGameWorld() *GameWorld {
 	// Wire up the typed event bus so systems can coordinate without direct dependencies.
 	w.EventBus = events.NewBus()
 
-	// Scene manager FIRST — it creates entities (ship, camera, planet)
-	sm := &scene.Manager{}
-	w.AddSystem(sm)
+	// Systems are registered in two passes: simulation first, then rendering.
+	// This keeps the update loop free of draw calls so the world can advance
+	// headlessly inside tests or server-side simulations.
+	sceneManager := &scene.Manager{}
+
+	simulationSystems := []ecs.System{
+		sceneManager,
+		&input.System{},
+		ai.NewSystem(),
+		&movement.System{},
+		camera.NewSystem(camera.Config{
+			MinScale: cfg.Viewport.MinScale,
+			MaxScale: cfg.Viewport.MaxScale,
+			ZoomStep: cfg.Viewport.ZoomStep,
+			ZoomLerp: cfg.Viewport.ZoomLerp,
+		}),
+	}
+
+	renderingSystems := []ecs.System{
+		&background.System{}, // 🌌 Parallax stars
+		&render.System{},     // World-space sprites
+		&debug.System{},      // Overlay diagnostics
+	}
 
 	// Core systems in logical update order
 	w.AddSystem(&background.System{}) // 🌌 Draws parallax stars
@@ -50,7 +70,7 @@ func NewGameWorld() *GameWorld {
 	w.AddSystem(&debug.System{})  // Overlay (UI/debug info)
 
 	// Start in the space scene
-	sm.QueueScene(&space.Scene{})
+	sceneManager.QueueScene(&space.Scene{})
 
 	return &GameWorld{World: w, Config: cfg}
 }

@@ -1,3 +1,5 @@
+//go:build !headless
+
 package platform_desktop
 
 import (
@@ -26,6 +28,5 @@ const (
 	KeyKPSubtract Key = ebiten.KeyKPSubtract
 )
 
-func IsKeyPressed(k Key) bool      { return ebiten.IsKeyPressed(k) }
-func IsKeyJustPressed(k Key) bool  { return inpututil.IsKeyJustPressed(k) }
-
+func IsKeyPressed(k Key) bool     { return ebiten.IsKeyPressed(k) }
+func IsKeyJustPressed(k Key) bool { return inpututil.IsKeyJustPressed(k) }
