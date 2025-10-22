@@ -55,9 +55,19 @@ func NewGameWorld() *GameWorld {
 		&debug.System{},      // Overlay diagnostics
 	}
 
-	for _, sys := range append(simulationSystems, renderingSystems...) {
-		w.AddSystem(sys)
-	}
+	// Core systems in logical update order
+	w.AddSystem(&background.System{}) // 🌌 Draws parallax stars
+	w.AddSystem(&input.System{})
+	w.AddSystem(ai.NewSystem())
+	w.AddSystem(&movement.System{})
+	w.AddSystem(camera.NewSystem(camera.Config{
+		MinScale: cfg.Viewport.MinScale,
+		MaxScale: cfg.Viewport.MaxScale,
+		ZoomStep: cfg.Viewport.ZoomStep,
+		ZoomLerp: cfg.Viewport.ZoomLerp,
+	}))
+	w.AddSystem(&render.System{}) // Draws world-space entities
+	w.AddSystem(&debug.System{})  // Overlay (UI/debug info)
 
 	// Start in the space scene
 	sceneManager.QueueScene(&space.Scene{})

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"rp-go/engine/ecs"
+	"rp-go/engine/platform"
 )
 
 const waypointTolerance = 4.0
@@ -65,6 +66,8 @@ func (s *System) Update(w *ecs.World) {
 		}
 	}
 }
+
+func (s *System) Draw(*ecs.World, *platform.Image) {}
 
 func (s *System) applyFollow(w *ecs.World, ai *ecs.AIController, pos *ecs.Position, vel *ecs.Velocity) bool {
 	cfg := ai.Follow
