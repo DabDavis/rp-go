@@ -41,9 +41,8 @@ func (g *Game) Draw(screen *platform.Image) {
 		op := platform.NewDrawImageOptions()
 		op.SetFilter(platform.FilterNearest)
 
-		// Apply camera scale and rotation
+		// Apply camera scale
 		op.Scale(cam.Scale, cam.Scale)
-		op.Rotate(cam.Rotation) // rotation placeholder (0 by default)
 
 		// Center on screen
 		windowW := float64(cfg.Window.Width)
@@ -64,9 +63,8 @@ func (g *Game) Draw(screen *platform.Image) {
 	op := platform.NewDrawImageOptions()
 	op.SetFilter(platform.FilterNearest)
 
-	// Apply camera scale and rotation
+	// Apply camera scale
 	op.Scale(cam.Scale, cam.Scale)
-	op.Rotate(cam.Rotation) // rotation placeholder (0 by default)
 
 	// Center on screen
 	windowW := float64(cfg.Window.Width)
@@ -117,7 +115,6 @@ func main() {
 
 	platform.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
 	platform.SetWindowTitle("rp-go: ECS Camera Prototype")
-
 
 	if *headless {
 		if err := platform.RunHeadless(game, *frames, cfg.Viewport.Width, cfg.Viewport.Height); err != nil {

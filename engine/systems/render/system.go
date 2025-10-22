@@ -43,13 +43,18 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		op := platform.NewDrawImageOptions()
 		op.SetFilter(platform.FilterNearest)
 
-		entityScale := float64(sprite.Width) / float64(sprite.Image.Bounds().Dx())
+		imgBounds := sprite.Image.Bounds()
+		originX := float64(imgBounds.Dx()) / 2
+		originY := float64(imgBounds.Dy()) / 2
+		entityScale := float64(sprite.Width) / float64(imgBounds.Dx())
 		totalScale := math.Max(0.01, cam.Scale*entityScale)
-		op.Scale(totalScale, totalScale)
-		op.Rotate(sprite.Rotation + cam.Rotation)
 
-		drawX := (pos.X-cam.X)*cam.Scale + halfW - (float64(sprite.Width)/2)*cam.Scale
-		drawY := (pos.Y-cam.Y)*cam.Scale + halfH - (float64(sprite.Height)/2)*cam.Scale
+		op.Translate(-originX, -originY)
+		op.Scale(totalScale, totalScale)
+		op.Rotate(sprite.Rotation)
+
+		drawX := (pos.X-cam.X)*cam.Scale + halfW
+		drawY := (pos.Y-cam.Y)*cam.Scale + halfH
 		op.Translate(drawX, drawY)
 
 		screen.DrawImage(sprite.Image, op)
@@ -62,4 +67,3 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		fmt.Printf("[RENDER] ✅ Drew %d entities\n", drawn)
 	}
 }
-

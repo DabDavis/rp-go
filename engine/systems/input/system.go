@@ -1,6 +1,8 @@
 package input
 
 import (
+	"math"
+
 	"rp-go/engine/ecs"
 	"rp-go/engine/platform"
 )
@@ -13,6 +15,7 @@ func (s *System) Update(w *ecs.World) {
 		if !ok {
 			continue
 		}
+		sprite, hasSprite := e.Get("Sprite").(*ecs.Sprite)
 		v.VX, v.VY = 0, 0
 		if platform.IsKeyPressed(platform.KeyArrowLeft) || platform.IsKeyPressed(platform.KeyA) {
 			v.VX = -2
@@ -25,6 +28,19 @@ func (s *System) Update(w *ecs.World) {
 		}
 		if platform.IsKeyPressed(platform.KeyArrowDown) || platform.IsKeyPressed(platform.KeyS) {
 			v.VY = 2
+		}
+
+		if hasSprite {
+			switch {
+			case v.VX < 0:
+				sprite.Rotation = math.Pi
+			case v.VX > 0:
+				sprite.Rotation = 0
+			case v.VY < 0:
+				sprite.Rotation = -math.Pi / 2
+			case v.VY > 0:
+				sprite.Rotation = math.Pi / 2
+			}
 		}
 	}
 }
