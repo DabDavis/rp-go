@@ -78,15 +78,6 @@ func (s *Scene) Init(w *ecs.World) {
 	fmt.Printf("[SCENE] Planet entity created (ID %d)\n", planet.ID)
 
 	// === Dark Elf Patrol ===
-	commander, err := s.actorCreator.Spawn(w, "dark-elf-ship-commander", ecs.Position{X: 320, Y: 200})
-	if err != nil {
-		fmt.Printf("[SCENE] Failed to spawn patrol commander: %v\n", err)
-	} else if actor := commander.Get("Actor"); actor != nil {
-		if meta, ok := actor.(*ecs.Actor); ok {
-			fmt.Printf("[SCENE] Spawned patrol commander %s (entity %d)\n", meta.ID, commander.ID)
-		}
-	}
-
 	for i := 0; i < 5; i++ {
 		spawnX := 260 + float64(i*72)
 		spawnY := 220.0
@@ -99,15 +90,6 @@ func (s *Scene) Init(w *ecs.World) {
 			if meta, ok := actor.(*ecs.Actor); ok {
 				fmt.Printf("[SCENE] Spawned patrol ship %s (entity %d)\n", meta.ID, enemy.ID)
 			}
-		}
-	}
-
-	courier, err := s.actorCreator.Spawn(w, "dark-elf-ship-courier", ecs.Position{X: 520, Y: 120})
-	if err != nil {
-		fmt.Printf("[SCENE] Failed to spawn courier: %v\n", err)
-	} else if actor := courier.Get("Actor"); actor != nil {
-		if meta, ok := actor.(*ecs.Actor); ok {
-			fmt.Printf("[SCENE] Spawned courier %s (entity %d)\n", meta.ID, courier.ID)
 		}
 	}
 }
