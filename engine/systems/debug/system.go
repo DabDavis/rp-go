@@ -13,8 +13,8 @@ import (
 // System draws on-screen diagnostic overlays (FPS, entity count, camera info).
 type System struct{}
 
-// Ensure this system only runs during the overlay pass.
-func (s *System) Layer() ecs.DrawLayer { return ecs.LayerOverlay }
+// Ensure this system only runs during the debug overlay pass.
+func (s *System) Layer() ecs.DrawLayer { return ecs.LayerDebug }
 
 func (s *System) Update(*ecs.World) {}
 
@@ -66,4 +66,3 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	op.SetFilter(platform.FilterNearest)
 	screen.DrawImage(overlay, op)
 }
-

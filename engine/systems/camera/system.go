@@ -67,7 +67,9 @@ func (s *System) Update(w *ecs.World) {
 	if !s.subscribed {
 		if bus, ok := w.EventBus.(*events.TypedBus); ok && bus != nil {
 			events.Subscribe(bus, func(ev events.CameraZoomEvent) {
-				cam.TargetScale = clamp(ev.NewScale, cam.MinScale, cam.MaxScale)
+				snapped := clamp(ev.NewScale, cam.MinScale, cam.MaxScale)
+				cam.TargetScale = snapped
+				cam.Scale = snapped
 			})
 			s.subscribed = true
 		}
@@ -94,6 +96,7 @@ func (s *System) Update(w *ecs.World) {
 
 	// Handle zoom input (keyboard + mouse wheel)
 	zoomDelta := 0.0
+	snapToTarget := false
 
 	if platform.IsKeyJustPressed(platform.KeyMinus) || platform.IsKeyJustPressed(platform.KeyKPSubtract) {
 		zoomDelta -= s.cfg.ZoomStep
@@ -103,6 +106,7 @@ func (s *System) Update(w *ecs.World) {
 	}
 	if platform.IsKeyJustPressed(platform.Key0) || platform.IsKeyJustPressed(platform.KeyKP0) {
 		cam.TargetScale = clamp(cam.DefaultScale, cam.MinScale, cam.MaxScale)
+		snapToTarget = true
 	}
 
 	if _, wheelY := platform.Wheel(); wheelY != 0 {
@@ -111,14 +115,15 @@ func (s *System) Update(w *ecs.World) {
 
 	if zoomDelta != 0 {
 		cam.TargetScale = clamp(cam.TargetScale+zoomDelta, cam.MinScale, cam.MaxScale)
+		snapToTarget = true
 	}
 
 	// Smooth follow
 	cam.X += (target.X - cam.X) * 0.1
 	cam.Y += (target.Y - cam.Y) * 0.1
 
-	// Smooth zoom
-	if s.cfg.ZoomLerp <= 0 {
+	// Smooth zoom unless we explicitly snapped to the new target this frame.
+	if snapToTarget || s.cfg.ZoomLerp <= 0 {
 		cam.Scale = cam.TargetScale
 	} else {
 		cam.Scale += (cam.TargetScale - cam.Scale) * math.Min(1, s.cfg.ZoomLerp)

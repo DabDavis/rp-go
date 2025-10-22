@@ -20,12 +20,11 @@ func DrawEntityDiagnostics(w *ecs.World, screen *platform.Image, frame int) {
 			continue
 		}
 
-		imgW := float64(sprite.Image.Bounds().Dx())
-		imgH := float64(sprite.Image.Bounds().Dy())
-		spriteScale := float64(sprite.Width) / imgW
+		imgW, imgH := sprite.NativeSize()
+		spriteScale := sprite.PixelScale()
 
 		entityInfo := fmt.Sprintf(
-			"Entity %d | World(%.1f, %.1f) | Sprite %.0fx%.0f | Scale: %.2f",
+			"Entity %d | World(%.1f, %.1f) | Sprite %.0fx%.0f | Scale: %.4f",
 			e.ID, pos.X, pos.Y, imgW, imgH, spriteScale,
 		)
 
@@ -37,4 +36,3 @@ func DrawEntityDiagnostics(w *ecs.World, screen *platform.Image, frame int) {
 		}
 	}
 }
-
