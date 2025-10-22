@@ -22,7 +22,8 @@ type LayeredSystem interface {
 type DrawLayer int
 
 const (
-	LayerWorld DrawLayer = iota // affected by camera transforms
+	LayerBackground DrawLayer = iota // parallax, backgrounds
+	LayerWorld // affected by camera transforms
 	LayerOverlay                 // drawn directly to final screen (HUD, debug)
 )
 

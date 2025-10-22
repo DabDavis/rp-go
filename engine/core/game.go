@@ -11,6 +11,7 @@ import (
 	"rp-go/engine/systems/debug"
 	"rp-go/engine/systems/input"
 	"rp-go/engine/systems/movement"
+	"rp-go/engine/systems/background"
 	"rp-go/engine/systems/render"
 	"rp-go/engine/systems/scene"
 )
@@ -34,6 +35,7 @@ func NewGameWorld() *GameWorld {
 	w.AddSystem(sm)
 
 	// Core systems in logical update order
+	w.AddSystem(&background.System{}) // 🌌 Draws parallax stars
 	w.AddSystem(&input.System{})
 	w.AddSystem(&movement.System{})
 	w.AddSystem(camera.NewSystem(camera.Config{
