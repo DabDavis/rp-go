@@ -30,7 +30,7 @@ func (g *Game) Draw(screen *platform.Image) {
 		g.offscreen = platform.NewImage(cfg.Viewport.Width, cfg.Viewport.Height)
 	}
 
-	// ✅ Draw world into offscreen buffer (1:1 internal pixels)
+	// Draw world into offscreen buffer (1:1 internal pixels)
 	g.offscreen.Clear()
 	w.Draw(g.offscreen)
 
@@ -38,6 +38,8 @@ func (g *Game) Draw(screen *platform.Image) {
 		screen.DrawImage(g.offscreen, nil)
 		return
 	}
+
+	// Composite offscreen to window, applying zoom & rotation
 
 	// ✅ Composite offscreen to window, applying zoom & rotation
 	op := platform.NewDrawImageOptions()

@@ -4,18 +4,12 @@ import (
 	"rp-go/engine/data"
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-=======
 	"rp-go/engine/platform"
->>>>>>> theirs
-=======
+
 	"rp-go/engine/platform"
->>>>>>> theirs
-=======
+
 	"rp-go/engine/platform"
->>>>>>> theirs
+	"rp-go/engine/platform"
 	"rp-go/engine/scenes/space"
 	"rp-go/engine/systems/camera"
 	"rp-go/engine/systems/debug"
@@ -42,7 +36,7 @@ func NewGameWorld() *GameWorld {
 	sm := &scene.Manager{}
 	w.AddSystem(sm)
 
-	// ✅ Core systems follow in logical order
+	// Core systems follow in logical order
 	w.AddSystem(&input.System{})
 	w.AddSystem(&movement.System{})
 	w.AddSystem(camera.NewSystem(camera.Config{
@@ -54,7 +48,7 @@ func NewGameWorld() *GameWorld {
 	w.AddSystem(&render.System{})
 	w.AddSystem(&debug.System{})
 
-	// ✅ Start in the space scene
+	// Start in the space scene
 	sm.QueueScene(&space.Scene{})
 
 	return &GameWorld{World: w, Config: cfg}
@@ -67,16 +61,8 @@ func (g *GameWorld) Update() {
 		bus.Flush()
 	}
 }
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-func (g *GameWorld) Draw(screen *ebiten.Image) { g.World.Draw(screen) }
-=======
 func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
->>>>>>> theirs
-=======
+
 func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
->>>>>>> theirs
-=======
+
 func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
->>>>>>> theirs

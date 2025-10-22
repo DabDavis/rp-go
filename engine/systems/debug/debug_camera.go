@@ -22,26 +22,15 @@ func DrawCameraInfo(w *ecs.World, screen *platform.Image) {
 		return
 	}
 
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-	sw := float64(screen.Bounds().Dx())
-	sh := float64(screen.Bounds().Dy())
-=======
 	bounds := screen.Bounds()
 	sw := float64(bounds.Dx())
 	sh := float64(bounds.Dy())
->>>>>>> theirs
-=======
 	bounds := screen.Bounds()
 	sw := float64(bounds.Dx())
 	sh := float64(bounds.Dy())
->>>>>>> theirs
-=======
 	bounds := screen.Bounds()
 	sw := float64(bounds.Dx())
 	sh := float64(bounds.Dy())
->>>>>>> theirs
 
 	minScale := cam.MinScale
 	if minScale <= 0 {

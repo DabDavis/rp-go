@@ -3,29 +3,16 @@ package camera
 import (
 	"math"
 
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"rp-go/engine/ecs"
+	"rp-go/engine/events"
+	"rp-go/engine/platform"
 
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
-=======
+	"rp-go/engine/platform"
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
 	"rp-go/engine/platform"
->>>>>>> theirs
-=======
-	"rp-go/engine/ecs"
-	"rp-go/engine/events"
-	"rp-go/engine/platform"
->>>>>>> theirs
-=======
-	"rp-go/engine/ecs"
-	"rp-go/engine/events"
-	"rp-go/engine/platform"
->>>>>>> theirs
 )
 
 // Config controls runtime camera zoom limits and responsiveness.
@@ -118,36 +105,11 @@ func (s *System) Update(w *ecs.World) {
 
 	// Handle zoom input (keyboard + mouse wheel).
 	zoomDelta := 0.0
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyKPSubtract) {
-		zoomDelta -= s.cfg.ZoomStep
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyEqual) || inpututil.IsKeyJustPressed(ebiten.KeyKPAdd) {
-		zoomDelta += s.cfg.ZoomStep
-	}
-	if inpututil.IsKeyJustPressed(ebiten.Key0) || inpututil.IsKeyJustPressed(ebiten.KeyKP0) {
-		cam.TargetScale = clamp(cam.DefaultScale, cam.MinScale, cam.MaxScale)
-	}
-<<<<<<< ours
-<<<<<<< ours
-	if wheel := ebiten.Wheel(); wheel.Y != 0 {
-		zoomDelta += wheel.Y * s.cfg.ZoomStep
-=======
 	if _, wheelY := ebiten.Wheel(); wheelY != 0 {
 		zoomDelta += wheelY * s.cfg.ZoomStep
->>>>>>> theirs
-=======
 	_, wheelY := ebiten.Wheel()
 	if wheelY != 0 {
 		zoomDelta += wheelY * s.cfg.ZoomStep
->>>>>>> theirs
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
 	if platform.IsKeyJustPressed(platform.KeyMinus) || platform.IsKeyJustPressed(platform.KeyKPSubtract) {
 		zoomDelta -= s.cfg.ZoomStep
 	}
@@ -160,14 +122,7 @@ func (s *System) Update(w *ecs.World) {
 	_, wheelY := platform.Wheel()
 	if wheelY != 0 {
 		zoomDelta += wheelY * s.cfg.ZoomStep
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-	}
+  }
 	if zoomDelta != 0 {
 		cam.TargetScale = clamp(cam.TargetScale+zoomDelta, cam.MinScale, cam.MaxScale)
 	}

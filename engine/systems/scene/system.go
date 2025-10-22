@@ -20,7 +20,7 @@ func (m *Manager) Update(w *ecs.World) {
 		m.init = true
 		if bus, ok := w.EventBus.(*events.TypedBus); ok && bus != nil {
 			events.Subscribe(bus, func(e events.SceneChangeEvent) {
-				fmt.Printf("[SCENE] Switching from %s → %s\n", m.currentName(), e.Target)
+				fmt.Printf("[SCENE] Switching from %s -> %s\n", m.currentName(), e.Target)
 				if scn, ok := e.Scene.(ecs.Scene); ok {
 					m.QueueScene(scn)
 				}

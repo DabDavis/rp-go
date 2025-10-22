@@ -24,19 +24,9 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	}
 
 	var builder strings.Builder
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", ebiten.ActualFPS(), len(w.Entities)))
-=======
 	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", platform.ActualFPS(), len(w.Entities)))
->>>>>>> theirs
-=======
 	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", platform.ActualFPS(), len(w.Entities)))
->>>>>>> theirs
-=======
 	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", platform.ActualFPS(), len(w.Entities)))
->>>>>>> theirs
 
 	if cam != nil {
 		targetScale := cam.TargetScale
@@ -64,17 +54,7 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		builder.WriteString(fmt.Sprintf("Default Scale: %.2f", defaultScale))
 	}
 
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-	text.Draw(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
-=======
 	platform.DrawText(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
->>>>>>> theirs
-=======
 	platform.DrawText(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
->>>>>>> theirs
-=======
 	platform.DrawText(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
->>>>>>> theirs
 }
