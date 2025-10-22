@@ -13,7 +13,7 @@ type PrioritizedSystem interface {
 	Priority() int
 }
 
-// Optional: indicate whether the system should draw in world or overlay layer
+// Optional: allow systems to specify which render layer they draw in.
 type LayeredSystem interface {
 	System
 	Layer() DrawLayer
@@ -22,8 +22,9 @@ type LayeredSystem interface {
 type DrawLayer int
 
 const (
-	LayerBackground DrawLayer = iota // parallax, backgrounds
-	LayerWorld // affected by camera transforms
-	LayerOverlay                 // drawn directly to final screen (HUD, debug)
+	LayerBackground DrawLayer = iota // parallax, starfields, distant scenery
+	LayerWorld                       // primary world entities affected by the camera
+	LayerForeground                  // world-space effects rendered after entities
+	LayerHUD                         // overlay UI drawn in screen space
+	LayerDebug                       // overlay diagnostics drawn in screen space
 )
-

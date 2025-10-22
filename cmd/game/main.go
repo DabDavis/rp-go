@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"log"
+	"math"
 	"os"
 	"strconv"
 
 	"rp-go/engine/core"
-	"rp-go/engine/ecs"
 	"rp-go/engine/platform"
 )
 
@@ -24,7 +24,6 @@ func (g *Game) Update() error {
 func (g *Game) Draw(screen *platform.Image) {
 	cfg := g.world.Config
 	w := g.world.World
-	cam := getActiveCamera(w)
 
 	// Create offscreen buffer for world rendering
 	if g.offscreen == nil {
@@ -43,20 +42,15 @@ func (g *Game) Draw(screen *platform.Image) {
 	op := platform.NewDrawImageOptions()
 	op.SetFilter(platform.FilterNearest)
 
-	if cam != nil {
-		// Apply camera zoom
-		op.Scale(cam.Scale, cam.Scale)
+	windowW := float64(cfg.Window.Width)
+	windowH := float64(cfg.Window.Height)
+	offW := float64(cfg.Viewport.Width)
+	offH := float64(cfg.Viewport.Height)
 
-		// Center world on screen
-		windowW := float64(cfg.Window.Width)
-		windowH := float64(cfg.Window.Height)
-		offW := float64(cfg.Viewport.Width)
-		offH := float64(cfg.Viewport.Height)
-		op.Translate(
-			windowW/2-offW*cam.Scale/2,
-			windowH/2-offH*cam.Scale/2,
-		)
-	}
+	offsetX := (windowW - offW) / 2
+	offsetY := (windowH - offH) / 2
+
+	op.Translate(math.Round(offsetX), math.Round(offsetY))
 
 	screen.DrawImage(g.offscreen, op)
 
@@ -110,14 +104,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
-// Utility: get first active camera in the world
-func getActiveCamera(w *ecs.World) *ecs.Camera {
-	for _, e := range w.Entities {
-		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
-			return c
-		}
-	}
-	return nil
-}
-

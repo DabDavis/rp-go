@@ -39,9 +39,10 @@ func (s *Scene) Init(w *ecs.World) {
 
 	shipImg := gfx.LoadImage("assets/entities/ship.png")
 	ship.Add(&ecs.Sprite{
-		Image:  shipImg,
-		Width:  64,
-		Height: 64,
+		Image:        shipImg,
+		Width:        64,
+		Height:       64,
+		PixelPerfect: true,
 	})
 
 	// === Camera ===
@@ -60,9 +61,10 @@ func (s *Scene) Init(w *ecs.World) {
 	planet.Add(&ecs.Position{X: 350, Y: 180})
 	planetImg := gfx.LoadImage("assets/entities/planet.png")
 	planet.Add(&ecs.Sprite{
-		Image:  planetImg,
-		Width:  128,
-		Height: 128,
+		Image:        planetImg,
+		Width:        128,
+		Height:       128,
+		PixelPerfect: true,
 	})
 	fmt.Printf("[SCENE] Planet entity created (ID %d)\n", planet.ID)
 }
@@ -75,4 +77,3 @@ func (s *Scene) Draw(w *ecs.World, screen *platform.Image) {
 func (s *Scene) Unload(w *ecs.World) {
 	fmt.Println("[SCENE] Unloading: Space")
 }
-

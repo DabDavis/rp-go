@@ -28,10 +28,8 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	}
 
 	bounds := screen.Bounds()
-	sw := float64(bounds.Dx())
-	sh := float64(bounds.Dy())
-	halfW := sw / 2
-	halfH := sh / 2
+	halfW := float64(bounds.Dx()) / 2
+	halfH := float64(bounds.Dy()) / 2
 
 	for _, e := range w.Entities {
 		pos, ok1 := e.Get("Position").(*ecs.Position)
@@ -40,15 +38,25 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 			continue
 		}
 
+		imgW, imgH := sprite.NativeSize()
+		if imgW == 0 || imgH == 0 {
+			continue
+		}
+
+		entityScale := sprite.PixelScale()
+		if entityScale <= 0 {
+			continue
+		}
+
+		effectiveScale := cam.Scale
+		if sprite.PixelPerfect {
+			effectiveScale = math.Max(1, math.Round(cam.Scale))
+		}
+
+		totalScale := math.Max(0.01, effectiveScale*entityScale)
+
 		op := platform.NewDrawImageOptions()
 		op.SetFilter(platform.FilterNearest)
-
-		imgBounds := sprite.Image.Bounds()
-		imgW := float64(imgBounds.Dx())
-		imgH := float64(imgBounds.Dy())
-
-		entityScale := float64(sprite.Width) / imgW
-		totalScale := math.Max(0.01, cam.Scale*entityScale)
 
 		// Center-origin transform
 		op.Translate(-imgW/2, -imgH/2)
@@ -64,11 +72,24 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		op.Rotate(sprite.Rotation)
 
 		// Translate to world position (centered on entity)
-		drawX := (pos.X - cam.X) * cam.Scale
-		drawY := (pos.Y - cam.Y) * cam.Scale
-		op.Translate(drawX+halfW, drawY+halfH)
+		drawX := (pos.X - cam.X) * effectiveScale
+		drawY := (pos.Y - cam.Y) * effectiveScale
+
+		if sprite.PixelPerfect {
+			drawX = math.Round(drawX)
+			drawY = math.Round(drawY)
+		}
+
+		finalX := drawX + halfW
+		finalY := drawY + halfH
+
+		if sprite.PixelPerfect {
+			finalX = math.Round(finalX)
+			finalY = math.Round(finalY)
+		}
+
+		op.Translate(finalX, finalY)
 
 		screen.DrawImage(sprite.Image, op)
 	}
 }
-
