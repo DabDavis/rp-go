@@ -51,11 +51,16 @@ func (m *Manager) Draw(w *ecs.World, screen *ebiten.Image) {
 }
 
 func (m *Manager) QueueScene(scene ecs.Scene) {
-	if m.current == nil {
-		m.current = scene
-	} else {
-		m.next = scene
+	if scene == nil {
+		return
 	}
+
+	// Always funnel through m.next so the lifecycle consistently
+	// triggers Init/Unload inside Update. The previous implementation
+	// assigned the very first scene straight to m.current, which meant
+	// Init was never called and no entities (camera, player, etc.) were
+	// spawned, leading to the render system spamming "No camera found".
+	m.next = scene
 }
 
 func (m *Manager) currentName() string {
@@ -64,4 +69,3 @@ func (m *Manager) currentName() string {
 	}
 	return "(none)"
 }
-

@@ -212,6 +212,59 @@ index 99cb0fa82af3138abd0972081ab11cd5d61b63f3..a410939deb2ba648b2f876cec42d9a8e
  	fmt.Println("[SCENE] Unloading: Space")
  }
 -
+diff --git a/engine/systems/scene/system.go b/engine/systems/scene/system.go
+index 274d72c362966a87f1959d5f67b6f45fabf40e68..ee2728fd418417c8208581a9f1af54492948eb06 100644
+--- a/engine/systems/scene/system.go
++++ b/engine/systems/scene/system.go
+@@ -29,39 +29,43 @@ func (m *Manager) Update(w *ecs.World) {
+ 	}
+ 
+ 	// Scene transition
+ 	if m.next != nil {
+ 		if m.current != nil {
+ 			m.current.Unload(w)
+ 		}
+ 		m.current = m.next
+ 		m.next = nil
+ 		m.current.Init(w)
+ 		fmt.Printf("[SCENE] Active: %s\n", m.current.Name())
+ 	}
+ 
+ 	if m.current != nil {
+ 		m.current.Update(w)
+ 	}
+ }
+ 
+ func (m *Manager) Draw(w *ecs.World, screen *ebiten.Image) {
+ 	if m.current != nil {
+ 		m.current.Draw(w, screen)
+ 	}
+ }
+ 
+ func (m *Manager) QueueScene(scene ecs.Scene) {
+-	if m.current == nil {
+-		m.current = scene
+-	} else {
+-		m.next = scene
++	if scene == nil {
++		return
+ 	}
++
++	// Always funnel through m.next so the lifecycle consistently
++	// triggers Init/Unload inside Update. The previous implementation
++	// assigned the very first scene straight to m.current, which meant
++	// Init was never called and no entities (camera, player, etc.) were
++	// spawned, leading to the render system spamming "No camera found".
++	m.next = scene
+ }
+ 
+ func (m *Manager) currentName() string {
+ 	if m.current != nil {
+ 		return m.current.Name()
+ 	}
+ 	return "(none)"
+ }
+-
 diff --git a/engine/systems/spawn/system.go b/engine/systems/spawn/system.go
 index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..1ea6699d028f475c84e1187981933d043b60a646 100644
 --- a/engine/systems/spawn/system.go
