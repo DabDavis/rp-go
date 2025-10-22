@@ -1,0 +1,34 @@
+{
+  "actors": [
+    {
+      "name": "dark-elf-ship-1",
+      "archetype": "enemy",
+      "persistent": false,
+      "sprite": {
+        "image": "assets/entities/dark-elf-ship-1.png",
+        "width": 64,
+        "height": 64,
+        "pixel_perfect": true
+      },
+      "velocity": {
+        "vx": 0,
+        "vy": 0
+      }
+    },
+    {
+      "name": "dark-elf-ship-commander",
+      "archetype": "enemy",
+      "persistent": false,
+      "sprite": {
+        "image": "assets/entities/dark-elf-ship-commander.png",
+        "width": 96,
+        "height": 96,
+        "pixel_perfect": true
+      },
+      "velocity": {
+        "vx": 0,
+        "vy": 0
+      }
+    }
+  ]
+}
