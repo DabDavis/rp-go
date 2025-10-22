@@ -13,6 +13,7 @@ func (s *System) Update(w *ecs.World) {
 		if !ok {
 			continue
 		}
+		sprite, hasSprite := e.Get("Sprite").(*ecs.Sprite)
 		v.VX, v.VY = 0, 0
 		if platform.IsKeyPressed(platform.KeyArrowLeft) || platform.IsKeyPressed(platform.KeyA) {
 			v.VX = -2
@@ -25,6 +26,20 @@ func (s *System) Update(w *ecs.World) {
 		}
 		if platform.IsKeyPressed(platform.KeyArrowDown) || platform.IsKeyPressed(platform.KeyS) {
 			v.VY = 2
+		}
+
+		if hasSprite {
+			if v.VX < 0 {
+				sprite.FlipHorizontal = true
+			} else if v.VX > 0 {
+				sprite.FlipHorizontal = false
+			}
+
+			if v.VY < 0 {
+				sprite.FlipVertical = true
+			} else if v.VY > 0 {
+				sprite.FlipVertical = false
+			}
 		}
 	}
 }

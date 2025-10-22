@@ -15,10 +15,12 @@ func (v *Velocity) Name() string { return "Velocity" }
 // Sprite is the renderable visual attached to an entity.
 // It stores a texture reference and visual transform data.
 type Sprite struct {
-	Image    *platform.Image // pointer to GPU texture
-	Width    int
-	Height   int
-	Rotation float64
+	Image          *platform.Image // pointer to GPU texture
+	Width          int
+	Height         int
+	Rotation       float64
+	FlipHorizontal bool
+	FlipVertical   bool
 }
 
 func (s *Sprite) Name() string { return "Sprite" }
@@ -50,4 +52,3 @@ type Actor struct {
 }
 
 func (a *Actor) Name() string { return "Actor" }
-
