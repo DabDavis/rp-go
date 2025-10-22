@@ -2,6 +2,7 @@ package space
 
 import (
 	"fmt"
+	"image/color"
 
 	"rp-go/engine/ecs"
 	"rp-go/engine/gfx"
@@ -76,3 +77,4 @@ func (s *Scene) Draw(w *ecs.World, screen *platform.Image) {
 func (s *Scene) Unload(w *ecs.World) {
 	fmt.Println("[SCENE] Unloading: Space")
 }
+

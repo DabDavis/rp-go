@@ -65,8 +65,3 @@ func (g *GameWorld) Draw(screen *platform.Image) {
 	g.World.Draw(screen)
 }
 
-	if bus, ok := g.World.EventBus.(*events.TypedBus); ok && bus != nil {
-		bus.Flush()
-	}
-}
-func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
