@@ -1,9 +1,13 @@
 package data
 
 import (
+	_ "embed"
 	"encoding/json"
 	"os"
 )
+
+//go:embed render_config.json
+var embeddedRenderConfig []byte
 
 type RenderConfig struct {
 	Window struct {
@@ -12,9 +16,13 @@ type RenderConfig struct {
 	} `json:"window"`
 
 	Viewport struct {
-		Width  int     `json:"width"`
-		Height int     `json:"height"`
-		Scale  float64 `json:"scale"`
+		Width    int     `json:"width"`
+		Height   int     `json:"height"`
+		Scale    float64 `json:"scale"`
+		MinScale float64 `json:"min_scale"`
+		MaxScale float64 `json:"max_scale"`
+		ZoomStep float64 `json:"zoom_step"`
+		ZoomLerp float64 `json:"zoom_lerp"`
 	} `json:"viewport"`
 
 	Player struct {
@@ -33,7 +41,7 @@ type RenderConfig struct {
 func LoadRenderConfig(path string) RenderConfig {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		panic(err)
+		data = embeddedRenderConfig
 	}
 	var cfg RenderConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
@@ -41,4 +49,3 @@ func LoadRenderConfig(path string) RenderConfig {
 	}
 	return cfg
 }
-

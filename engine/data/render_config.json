@@ -1,6 +1,14 @@
 {
   "window": { "width": 960, "height": 720 },
-  "viewport": { "width": 960, "height": 720, "scale": 5 },
+  "viewport": {
+    "width": 960,
+    "height": 720,
+    "scale": 1.5,
+    "min_scale": 0.5,
+    "max_scale": 3,
+    "zoom_step": 0.1,
+    "zoom_lerp": 0.2
+  },
   "player": { "sprite_width": 1024, "sprite_height": 1024, "scale": 0.025 },
   "terrain": { "tile_size": 32, "scale": 1 }
 }
