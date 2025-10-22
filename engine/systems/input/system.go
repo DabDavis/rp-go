@@ -31,15 +31,10 @@ func (s *System) Update(w *ecs.World) {
 		}
 
 		if hasSprite {
-			switch {
-			case v.VX < 0:
-				sprite.Rotation = math.Pi
-			case v.VX > 0:
-				sprite.Rotation = 0
-			case v.VY < 0:
-				sprite.Rotation = -math.Pi / 2
-			case v.VY > 0:
-				sprite.Rotation = math.Pi / 2
+			if v.VX < 0 {
+				sprite.FlipHorizontal = true
+			} else if v.VX > 0 {
+				sprite.FlipHorizontal = false
 			}
 		}
 	}
