@@ -20,9 +20,78 @@ type Sprite struct {
 	Height         int
 	Rotation       float64
 	FlipHorizontal bool
+
+	PixelPerfect bool
+
+	cachedImage        *platform.Image
+	cachedSourceWidth  int
+	cachedSourceHeight int
+	cachedTargetWidth  int
+	cachedTargetHeight int
+	cachedScale        float64
 }
 
 func (s *Sprite) Name() string { return "Sprite" }
+
+// ensureCache synchronizes cached sprite metrics with the current image
+// and desired output size. It avoids expensive Bounds() calls on every draw
+// by recomputing only when the source image or target dimensions change.
+func (s *Sprite) ensureCache() {
+	if s == nil {
+		return
+	}
+
+	if s.cachedImage != s.Image {
+		s.cachedSourceWidth = 0
+		s.cachedSourceHeight = 0
+		s.cachedScale = 0
+	}
+
+	targetW := s.Width
+	targetH := s.Height
+
+	if s.cachedSourceWidth == 0 || s.cachedSourceHeight == 0 ||
+		s.cachedTargetWidth != targetW || s.cachedTargetHeight != targetH {
+		if s.Image != nil {
+			bounds := s.Image.Bounds()
+			s.cachedSourceWidth = bounds.Dx()
+			s.cachedSourceHeight = bounds.Dy()
+		} else {
+			s.cachedSourceWidth = 0
+			s.cachedSourceHeight = 0
+		}
+
+		if s.cachedSourceWidth > 0 {
+			s.cachedScale = float64(targetW) / float64(s.cachedSourceWidth)
+		} else {
+			s.cachedScale = 0
+		}
+
+		s.cachedTargetWidth = targetW
+		s.cachedTargetHeight = targetH
+		s.cachedImage = s.Image
+	}
+}
+
+// NativeSize returns the intrinsic image dimensions for the sprite.
+func (s *Sprite) NativeSize() (float64, float64) {
+	if s == nil {
+		return 0, 0
+	}
+	s.ensureCache()
+	return float64(s.cachedSourceWidth), float64(s.cachedSourceHeight)
+}
+
+// PixelScale returns the ratio between the desired sprite width and the
+// intrinsic image width. This value is cached so we only recompute when the
+// sprite dimensions actually change.
+func (s *Sprite) PixelScale() float64 {
+	if s == nil {
+		return 0
+	}
+	s.ensureCache()
+	return s.cachedScale
+}
 
 // Camera defines the view transform for rendering the world.
 type Camera struct {
