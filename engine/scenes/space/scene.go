@@ -3,12 +3,17 @@ package space
 import (
 	"fmt"
 
+	"rp-go/engine/data"
 	"rp-go/engine/ecs"
 	"rp-go/engine/gfx"
 	"rp-go/engine/platform"
+	"rp-go/engine/world"
 )
 
-type Scene struct{ initialized bool }
+type Scene struct {
+	initialized  bool
+	actorCreator *world.ActorCreator
+}
 
 func (s *Scene) Name() string { return "space" }
 
@@ -19,6 +24,10 @@ func (s *Scene) Init(w *ecs.World) {
 	s.initialized = true
 
 	fmt.Println("[SCENE] Initializing: Space")
+
+	actorDB := data.LoadActorDatabase("engine/data/actors.json")
+	s.actorCreator = world.NewActorCreator(actorDB)
+	s.actorCreator.PreloadImages()
 
 	// Warm the texture cache so the first frame doesn't block on disk IO.
 	gfx.PreloadImages(
@@ -67,6 +76,22 @@ func (s *Scene) Init(w *ecs.World) {
 		PixelPerfect: true,
 	})
 	fmt.Printf("[SCENE] Planet entity created (ID %d)\n", planet.ID)
+
+	// === Dark Elf Patrol ===
+	for i := 0; i < 5; i++ {
+		spawnX := 260 + float64(i*72)
+		spawnY := 220.0
+		enemy, err := s.actorCreator.Spawn(w, "dark-elf-ship-1", ecs.Position{X: spawnX, Y: spawnY})
+		if err != nil {
+			fmt.Printf("[SCENE] Failed to spawn patrol ship: %v\n", err)
+			continue
+		}
+		if actor := enemy.Get("Actor"); actor != nil {
+			if meta, ok := actor.(*ecs.Actor); ok {
+				fmt.Printf("[SCENE] Spawned patrol ship %s (entity %d)\n", meta.ID, enemy.ID)
+			}
+		}
+	}
 }
 
 func (s *Scene) Update(w *ecs.World) {}
