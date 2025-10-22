@@ -6,10 +6,6 @@ import (
 	"rp-go/engine/events"
 	"rp-go/engine/platform"
 
-	"rp-go/engine/platform"
-
-	"rp-go/engine/platform"
-	"rp-go/engine/platform"
 	"rp-go/engine/scenes/space"
 	"rp-go/engine/systems/camera"
 	"rp-go/engine/systems/debug"
@@ -19,11 +15,13 @@ import (
 	"rp-go/engine/systems/scene"
 )
 
+// GameWorld bundles the ECS world and runtime configuration.
 type GameWorld struct {
 	World  *ecs.World
 	Config data.RenderConfig
 }
 
+// NewGameWorld creates and initializes a full engine world.
 func NewGameWorld() *GameWorld {
 	cfg := data.LoadRenderConfig("engine/data/render_config.json")
 	w := ecs.NewWorld()
@@ -32,8 +30,7 @@ func NewGameWorld() *GameWorld {
 	// direct dependencies. It gets flushed at the end of every update.
 	w.EventBus = events.NewBus()
 
-	// Scene manager FIRST - it creates entities (ship, camera, planet)
-	// ✅ Scene manager FIRST — it creates entities (ship, camera, planet)
+	// Scene manager FIRST — it creates entities (ship, camera, planet)
 	sm := &scene.Manager{}
 	w.AddSystem(sm)
 
@@ -55,20 +52,16 @@ func NewGameWorld() *GameWorld {
 	return &GameWorld{World: w, Config: cfg}
 }
 
+// Update runs one ECS update tick and flushes the event bus.
 func (g *GameWorld) Update() {
 	g.World.Update()
-
 	if bus, ok := g.World.EventBus.(*events.TypedBus); ok && bus != nil {
 		bus.Flush()
 	}
 }
 
-	if bus, ok := g.World.EventBus.(*events.TypedBus); ok && bus != nil {
-		bus.Flush()
-	}
+// Draw executes all registered Draw systems.
+func (g *GameWorld) Draw(screen *platform.Image) {
+	g.World.Draw(screen)
 }
-func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
 
-func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
-
-func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }

@@ -2,20 +2,20 @@ package ecs
 
 import "rp-go/engine/platform"
 
+// Position represents a 2D coordinate in world space.
 type Position struct{ X, Y float64 }
 
 func (p *Position) Name() string { return "Position" }
 
+// Velocity represents a rate of change in position.
 type Velocity struct{ VX, VY float64 }
 
 func (v *Velocity) Name() string { return "Velocity" }
 
+// Sprite is the renderable visual attached to an entity.
+// It stores a texture reference and visual transform data.
 type Sprite struct {
-	Texture  *platform.Image
-	Image    *platform.Image
-
-	Image    *platform.Image
-	Image    *platform.Image
+	Image    *platform.Image // pointer to GPU texture
 	Width    int
 	Height   int
 	Rotation float64
@@ -23,6 +23,7 @@ type Sprite struct {
 
 func (s *Sprite) Name() string { return "Sprite" }
 
+// Camera defines the view transform for rendering the world.
 type Camera struct {
 	X, Y         float64
 	Scale        float64
@@ -36,6 +37,7 @@ type Camera struct {
 
 func (c *Camera) Name() string { return "Camera" }
 
+// CameraTarget marks an entity as being tracked by the active camera.
 type CameraTarget struct{}
 
 func (c *CameraTarget) Name() string { return "CameraTarget" }
@@ -48,3 +50,4 @@ type Actor struct {
 }
 
 func (a *Actor) Name() string { return "Actor" }
+

@@ -10,23 +10,18 @@ import (
 	"rp-go/engine/platform"
 )
 
+// cachedImage wraps a lazily-loaded image resource with one-time initialization.
 type cachedImage struct {
 	once sync.Once
-	img  *platform.Image
-	img  *platform.Image
 	img  *platform.Image
 	err  error
 }
 
+// imageCache maps image file paths to their cached image objects.
 var imageCache sync.Map // map[string]*cachedImage
 
-// LoadImage returns an image, caching the decoded result so repeated calls reuse
-// the same underlying resource.
-// LoadImage returns an Ebiten image, caching decoded results so repeated
-// requests (even across goroutines) reuse the same GPU resource.
-func LoadImage(path string) *platform.Image {
-
-func LoadImage(path string) *platform.Image {
+// LoadImage returns an Ebiten-compatible image, caching the decoded result.
+// Repeated calls with the same path reuse the same GPU resource.
 func LoadImage(path string) *platform.Image {
 	entryAny, _ := imageCache.LoadOrStore(path, &cachedImage{})
 	entry := entryAny.(*cachedImage)
@@ -34,7 +29,6 @@ func LoadImage(path string) *platform.Image {
 	entry.once.Do(func() {
 		entry.img, entry.err = decodeImage(path)
 		if entry.err != nil {
-			fmt.Printf("[GFX] failed to load image %s: %v\n", path, entry.err)
 			fmt.Printf("[GFX] Failed to load image: %s (%v)\n", path, entry.err)
 		}
 	})
@@ -45,20 +39,8 @@ func LoadImage(path string) *platform.Image {
 	return entry.img
 }
 
-// PreloadImages eagerly loads the provided paths so the cache is primed before
-// gameplay needs them. The work is performed serially to keep the loader easy to
-// reason about in all build modes.
-func PreloadImages(paths ...string) {
-	for _, path := range paths {
-		if LoadImage(path) == nil {
-			fmt.Printf("[GFX] preload failed for %s\n", path)
-		}
-	}
-}
-
-func decodeImage(path string) (*platform.Image, error) {
-// PreloadImages eagerly loads a list of image paths using a worker-per-path
-// fan-out. It reuses the LoadImage cache so subsequent calls are instantaneous.
+// PreloadImages loads a list of images concurrently, populating the cache
+// ahead of time so gameplay can access them instantly later.
 func PreloadImages(paths ...string) {
 	var wg sync.WaitGroup
 	wg.Add(len(paths))
@@ -66,14 +48,16 @@ func PreloadImages(paths ...string) {
 		path := path
 		go func() {
 			defer wg.Done()
-			LoadImage(path)
+			if LoadImage(path) == nil {
+				fmt.Printf("[GFX] Preload failed for %s\n", path)
+			}
 		}()
 	}
 	wg.Wait()
 }
 
-func decodeImage(path string) (*platform.Image, error) {
-func decodeImage(path string) (*platform.Image, error) {
+// decodeImage decodes a PNG (or other supported formats) from disk and wraps
+// it in a platform.Image for rendering.
 func decodeImage(path string) (*platform.Image, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -87,6 +71,5 @@ func decodeImage(path string) (*platform.Image, error) {
 	}
 
 	return platform.NewImageFromImage(img), nil
-	return platform.NewImageFromImage(img), nil
-	return platform.NewImageFromImage(img), nil
 }
+

@@ -6,13 +6,6 @@ import (
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
 	"rp-go/engine/platform"
-
-	"rp-go/engine/ecs"
-	"rp-go/engine/events"
-	"rp-go/engine/platform"
-	"rp-go/engine/ecs"
-	"rp-go/engine/events"
-	"rp-go/engine/platform"
 )
 
 // Config controls runtime camera zoom limits and responsiveness.
@@ -74,7 +67,7 @@ func (s *System) Update(w *ecs.World) {
 		return
 	}
 
-	// One-time wiring for zoom events.
+	// Subscribe once for camera zoom events.
 	if !s.subscribed {
 		if bus, ok := w.EventBus.(*events.TypedBus); ok && bus != nil {
 			events.Subscribe(bus, func(ev events.CameraZoomEvent) {
@@ -84,7 +77,7 @@ func (s *System) Update(w *ecs.World) {
 		}
 	}
 
-	// Ensure the camera carries sane zoom limits and defaults.
+	// Enforce sane zoom defaults.
 	if cam.MinScale <= 0 {
 		cam.MinScale = s.cfg.MinScale
 	}
@@ -103,13 +96,9 @@ func (s *System) Update(w *ecs.World) {
 		cam.TargetScale = clamp(cam.TargetScale, cam.MinScale, cam.MaxScale)
 	}
 
-	// Handle zoom input (keyboard + mouse wheel).
+	// Handle zoom input (keyboard + mouse wheel)
 	zoomDelta := 0.0
-	if _, wheelY := ebiten.Wheel(); wheelY != 0 {
-		zoomDelta += wheelY * s.cfg.ZoomStep
-	_, wheelY := ebiten.Wheel()
-	if wheelY != 0 {
-		zoomDelta += wheelY * s.cfg.ZoomStep
+
 	if platform.IsKeyJustPressed(platform.KeyMinus) || platform.IsKeyJustPressed(platform.KeyKPSubtract) {
 		zoomDelta -= s.cfg.ZoomStep
 	}
@@ -119,11 +108,11 @@ func (s *System) Update(w *ecs.World) {
 	if platform.IsKeyJustPressed(platform.Key0) || platform.IsKeyJustPressed(platform.KeyKP0) {
 		cam.TargetScale = clamp(cam.DefaultScale, cam.MinScale, cam.MaxScale)
 	}
-	_, wheelY := platform.Wheel()
-	if wheelY != 0 {
+
+	if _, wheelY := platform.Wheel(); wheelY != 0 {
 		zoomDelta += wheelY * s.cfg.ZoomStep
 	}
-  }
+
 	if zoomDelta != 0 {
 		cam.TargetScale = clamp(cam.TargetScale+zoomDelta, cam.MinScale, cam.MaxScale)
 	}
@@ -175,3 +164,4 @@ func clamp(v, min, max float64) float64 {
 	}
 	return v
 }
+

@@ -9,6 +9,7 @@ import (
 	"rp-go/engine/platform"
 )
 
+// DrawCameraInfo overlays basic camera diagnostics on screen.
 func DrawCameraInfo(w *ecs.World, screen *platform.Image) {
 	var cam *ecs.Camera
 	for _, e := range w.Entities {
@@ -17,17 +18,10 @@ func DrawCameraInfo(w *ecs.World, screen *platform.Image) {
 			break
 		}
 	}
-
 	if cam == nil {
 		return
 	}
 
-	bounds := screen.Bounds()
-	sw := float64(bounds.Dx())
-	sh := float64(bounds.Dy())
-	bounds := screen.Bounds()
-	sw := float64(bounds.Dx())
-	sh := float64(bounds.Dy())
 	bounds := screen.Bounds()
 	sw := float64(bounds.Dx())
 	sh := float64(bounds.Dy())
@@ -46,10 +40,10 @@ func DrawCameraInfo(w *ecs.World, screen *platform.Image) {
 	}
 
 	msg := fmt.Sprintf(
-		"Camera: (%.1f, %.1f)\nScale: %.2f -> %.2f\nBounds: %.2f-%.2f\nViewport: %.0fx%.0f\n",
-		"Camera: (%.1f, %.1f)\nScale: %.2f → %.2f\nBounds: %.2f–%.2f\nViewport: %.0fx%.0f\n",
+		"Camera: (%.1f, %.1f)\nScale: %.2f → %.2f\nBounds: %.2f–%.2f\nViewport: %.0fx%.0f",
 		cam.X, cam.Y, cam.Scale, targetScale, minScale, maxScale, sw, sh,
 	)
 
 	platform.DrawText(screen, msg, basicfont.Face7x13, 10, 20, color.White)
 }
+
