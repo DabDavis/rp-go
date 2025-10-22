@@ -1,0 +1,2 @@
+echo -e "bin/\n*.exe\n*.log\n.DS_Store" > .gitignore
+
