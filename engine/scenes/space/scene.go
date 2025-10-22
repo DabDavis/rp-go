@@ -58,7 +58,7 @@ func (s *Scene) Init(w *ecs.World) {
 func (s *Scene) Update(w *ecs.World) {}
 
 func (s *Scene) Draw(w *ecs.World, screen *platform.Image) {
-	// Proper background fill
+	// ✅ Proper background fill
 	screen.Fill(color.RGBA{0, 0, 32, 255})
 }
 

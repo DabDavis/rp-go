@@ -6,6 +6,13 @@ import (
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
 	"rp-go/engine/platform"
+
+	"rp-go/engine/ecs"
+	"rp-go/engine/events"
+	"rp-go/engine/platform"
+	"rp-go/engine/ecs"
+	"rp-go/engine/events"
+	"rp-go/engine/platform"
 )
 
 // Config controls runtime camera zoom limits and responsiveness.
@@ -98,6 +105,11 @@ func (s *System) Update(w *ecs.World) {
 
 	// Handle zoom input (keyboard + mouse wheel).
 	zoomDelta := 0.0
+	if _, wheelY := ebiten.Wheel(); wheelY != 0 {
+		zoomDelta += wheelY * s.cfg.ZoomStep
+	_, wheelY := ebiten.Wheel()
+	if wheelY != 0 {
+		zoomDelta += wheelY * s.cfg.ZoomStep
 	if platform.IsKeyJustPressed(platform.KeyMinus) || platform.IsKeyJustPressed(platform.KeyKPSubtract) {
 		zoomDelta -= s.cfg.ZoomStep
 	}
@@ -110,7 +122,7 @@ func (s *System) Update(w *ecs.World) {
 	_, wheelY := platform.Wheel()
 	if wheelY != 0 {
 		zoomDelta += wheelY * s.cfg.ZoomStep
-	}
+  }
 	if zoomDelta != 0 {
 		cam.TargetScale = clamp(cam.TargetScale+zoomDelta, cam.MinScale, cam.MaxScale)
 	}

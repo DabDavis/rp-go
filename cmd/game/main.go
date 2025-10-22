@@ -40,6 +40,8 @@ func (g *Game) Draw(screen *platform.Image) {
 	}
 
 	// Composite offscreen to window, applying zoom & rotation
+
+	// ✅ Composite offscreen to window, applying zoom & rotation
 	op := platform.NewDrawImageOptions()
 	op.SetFilter(platform.FilterNearest)
 

@@ -13,6 +13,8 @@ import (
 type cachedImage struct {
 	once sync.Once
 	img  *platform.Image
+	img  *platform.Image
+	img  *platform.Image
 	err  error
 }
 
@@ -20,6 +22,9 @@ var imageCache sync.Map // map[string]*cachedImage
 
 // LoadImage returns an Ebiten image, caching decoded results so repeated
 // requests (even across goroutines) reuse the same GPU resource.
+func LoadImage(path string) *platform.Image {
+
+func LoadImage(path string) *platform.Image {
 func LoadImage(path string) *platform.Image {
 	entryAny, _ := imageCache.LoadOrStore(path, &cachedImage{})
 	entry := entryAny.(*cachedImage)
@@ -53,6 +58,8 @@ func PreloadImages(paths ...string) {
 }
 
 func decodeImage(path string) (*platform.Image, error) {
+func decodeImage(path string) (*platform.Image, error) {
+func decodeImage(path string) (*platform.Image, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -64,5 +71,7 @@ func decodeImage(path string) (*platform.Image, error) {
 		return nil, err
 	}
 
+	return platform.NewImageFromImage(img), nil
+	return platform.NewImageFromImage(img), nil
 	return platform.NewImageFromImage(img), nil
 }
