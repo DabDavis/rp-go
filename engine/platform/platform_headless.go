@@ -121,6 +121,34 @@ func ActualFPS() float64        { return 60 }
 func SetWindowSize(int, int)    {}
 func SetWindowTitle(string)     {}
 
+type GamepadID int
+
+type GamepadLayoutID int
+
+type StandardGamepadButton int
+
+const (
+	StandardGamepadButtonLeft StandardGamepadButton = iota
+	StandardGamepadButtonRight
+	StandardGamepadButtonUp
+	StandardGamepadButtonDown
+)
+
+type StandardGamepadAxis int
+
+const (
+	StandardGamepadAxisLeftStickHorizontal StandardGamepadAxis = iota
+	StandardGamepadAxisLeftStickVertical
+)
+
+func GamepadIDs() []GamepadID { return nil }
+
+func StandardGamepadLayoutID(GamepadID) (GamepadLayoutID, bool) { return 0, false }
+
+func StandardGamepadAxisValue(GamepadID, StandardGamepadAxis) float64 { return 0 }
+
+func IsStandardGamepadButtonPressed(GamepadID, StandardGamepadButton) bool { return false }
+
 type Game interface {
 	Update() error
 	Draw(screen *Image)

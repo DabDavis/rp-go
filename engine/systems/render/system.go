@@ -71,4 +71,3 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		fmt.Printf("[RENDER] ✅ Drew %d entities\n", drawn)
 	}
 }
-

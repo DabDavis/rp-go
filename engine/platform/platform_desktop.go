@@ -135,6 +135,42 @@ func IsKeyJustPressed(k Key) bool {
 	return inpututil.IsKeyJustPressed(k)
 }
 
+type GamepadID = ebiten.GamepadID
+
+type GamepadLayoutID = ebiten.StandardGamepadLayoutID
+
+type StandardGamepadButton = ebiten.StandardGamepadButton
+
+const (
+	StandardGamepadButtonLeft  StandardGamepadButton = ebiten.StandardGamepadButtonLeft
+	StandardGamepadButtonRight StandardGamepadButton = ebiten.StandardGamepadButtonRight
+	StandardGamepadButtonUp    StandardGamepadButton = ebiten.StandardGamepadButtonUp
+	StandardGamepadButtonDown  StandardGamepadButton = ebiten.StandardGamepadButtonDown
+)
+
+type StandardGamepadAxis = ebiten.StandardGamepadAxis
+
+const (
+	StandardGamepadAxisLeftStickHorizontal StandardGamepadAxis = ebiten.StandardGamepadAxisLeftStickHorizontal
+	StandardGamepadAxisLeftStickVertical   StandardGamepadAxis = ebiten.StandardGamepadAxisLeftStickVertical
+)
+
+func GamepadIDs() []GamepadID {
+	return ebiten.GamepadIDs()
+}
+
+func StandardGamepadLayoutID(id GamepadID) (GamepadLayoutID, bool) {
+	return ebiten.StandardGamepadLayoutID(id)
+}
+
+func StandardGamepadAxisValue(id GamepadID, axis StandardGamepadAxis) float64 {
+	return ebiten.StandardGamepadAxisValue(id, axis)
+}
+
+func IsStandardGamepadButtonPressed(id GamepadID, button StandardGamepadButton) bool {
+	return ebiten.IsStandardGamepadButtonPressed(id, button)
+}
+
 func Wheel() (float64, float64) {
 	return ebiten.Wheel()
 }
