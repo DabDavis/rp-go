@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"image/color"
 
-	"github.com/hajimehoshi/ebiten/v2"
 	"rp-go/engine/ecs"
 	"rp-go/engine/gfx"
+	"rp-go/engine/platform"
 )
 
 type Scene struct{ initialized bool }
@@ -57,7 +57,7 @@ func (s *Scene) Init(w *ecs.World) {
 
 func (s *Scene) Update(w *ecs.World) {}
 
-func (s *Scene) Draw(w *ecs.World, screen *ebiten.Image) {
+func (s *Scene) Draw(w *ecs.World, screen *platform.Image) {
 	// ✅ Proper background fill
 	screen.Fill(color.RGBA{0, 0, 32, 255})
 }

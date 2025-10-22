@@ -3,8 +3,8 @@ package actor
 import (
 	"fmt"
 
-	"github.com/hajimehoshi/ebiten/v2"
 	"rp-go/engine/ecs"
+	"rp-go/engine/platform"
 )
 
 type System struct {
@@ -26,5 +26,4 @@ func (s *System) Update(w *ecs.World) {
 	}
 }
 
-func (s *System) Draw(*ecs.World, *ebiten.Image) {}
-
+func (s *System) Draw(*ecs.World, *platform.Image) {}

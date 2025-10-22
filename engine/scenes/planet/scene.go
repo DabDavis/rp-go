@@ -1,9 +1,9 @@
 package planet
 
 import (
-	"github.com/hajimehoshi/ebiten/v2"
 	"rp-go/engine/ecs"
 	"rp-go/engine/gfx"
+	"rp-go/engine/platform"
 )
 
 type Scene struct{ initialized bool }
@@ -43,7 +43,6 @@ func (s *Scene) Init(w *ecs.World) {
 	cam.Add(&ecs.Camera{X: 0, Y: 0, Scale: 2.0, Target: player})
 }
 
-func (s *Scene) Update(w *ecs.World) {}
-func (s *Scene) Draw(w *ecs.World, screen *ebiten.Image) {}
-func (s *Scene) Unload(w *ecs.World) {}
-
+func (s *Scene) Update(w *ecs.World)                       {}
+func (s *Scene) Draw(w *ecs.World, screen *platform.Image) {}
+func (s *Scene) Unload(w *ecs.World)                       {}

@@ -1,10 +1,21 @@
 package core
 
 import (
-	"github.com/hajimehoshi/ebiten/v2"
 	"rp-go/engine/data"
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+=======
+	"rp-go/engine/platform"
+>>>>>>> theirs
+=======
+	"rp-go/engine/platform"
+>>>>>>> theirs
+=======
+	"rp-go/engine/platform"
+>>>>>>> theirs
 	"rp-go/engine/scenes/space"
 	"rp-go/engine/systems/camera"
 	"rp-go/engine/systems/debug"
@@ -56,4 +67,16 @@ func (g *GameWorld) Update() {
 		bus.Flush()
 	}
 }
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 func (g *GameWorld) Draw(screen *ebiten.Image) { g.World.Draw(screen) }
+=======
+func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
+>>>>>>> theirs
+=======
+func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
+>>>>>>> theirs
+=======
+func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
+>>>>>>> theirs

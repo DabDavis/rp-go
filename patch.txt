@@ -1,15 +1,148 @@
+diff --git a/cmd/game/main.go b/cmd/game/main.go
+index 483acde391a2c779535d625d1743b512acd37a5e..a17288710dc27658695b4573f78acd1f59b4cb53 100644
+--- a/cmd/game/main.go
++++ b/cmd/game/main.go
+@@ -1,88 +1,113 @@
+ package main
+ 
+ import (
++	"flag"
+ 	"log"
++	"os"
++	"strconv"
++
+ 	"rp-go/engine/core"
+ 	"rp-go/engine/ecs"
+-
+-	"github.com/hajimehoshi/ebiten/v2"
++	"rp-go/engine/platform"
+ )
+ 
+ type Game struct {
+ 	world     *core.GameWorld
+-	offscreen *ebiten.Image
++	offscreen *platform.Image
+ }
+ 
+ func (g *Game) Update() error {
+ 	g.world.Update()
+ 	return nil
+ }
+ 
+-func (g *Game) Draw(screen *ebiten.Image) {
++func (g *Game) Draw(screen *platform.Image) {
+ 	cfg := g.world.Config
+ 	w := g.world.World
+ 	cam := getActiveCamera(w)
+ 
+ 	if g.offscreen == nil {
+-		g.offscreen = ebiten.NewImage(cfg.Viewport.Width, cfg.Viewport.Height)
++		g.offscreen = platform.NewImage(cfg.Viewport.Width, cfg.Viewport.Height)
+ 	}
+ 
+ 	// ✅ Draw world into offscreen buffer (1:1 internal pixels)
+ 	g.offscreen.Clear()
+ 	w.Draw(g.offscreen)
+ 
+ 	if cam == nil {
+ 		screen.DrawImage(g.offscreen, nil)
+ 		return
+ 	}
+ 
+ 	// ✅ Composite offscreen to window, applying zoom & rotation
+-	op := &ebiten.DrawImageOptions{}
+-	op.Filter = ebiten.FilterNearest
++	op := platform.NewDrawImageOptions()
++	op.SetFilter(platform.FilterNearest)
+ 
+ 	// Apply camera scale and rotation
+-	op.GeoM.Scale(cam.Scale, cam.Scale)
+-	op.GeoM.Rotate(cam.Rotation) // rotation placeholder (0 by default)
++	op.Scale(cam.Scale, cam.Scale)
++	op.Rotate(cam.Rotation) // rotation placeholder (0 by default)
+ 
+ 	// Center on screen
+ 	windowW := float64(cfg.Window.Width)
+ 	windowH := float64(cfg.Window.Height)
+ 	offW := float64(cfg.Viewport.Width)
+ 	offH := float64(cfg.Viewport.Height)
+-	op.GeoM.Translate(
++	op.Translate(
+ 		windowW/2-offW*cam.Scale/2,
+ 		windowH/2-offH*cam.Scale/2,
+ 	)
+ 
+ 	screen.DrawImage(g.offscreen, op)
+ }
+ 
+ func (g *Game) Layout(outW, outH int) (int, int) {
+ 	cfg := g.world.Config
+ 	return cfg.Window.Width, cfg.Window.Height
+ }
+ 
+ func main() {
+ 	gameWorld := core.NewGameWorld()
+ 	cfg := gameWorld.Config
+ 
+ 	game := &Game{world: gameWorld}
+ 
+-	ebiten.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
+-	ebiten.SetWindowTitle("rp-go: ECS Camera Prototype")
++	headless := flag.Bool("headless", false, "run without opening a window")
++	frames := flag.Int("frames", 120, "number of frames to run in headless mode")
++	flag.Parse()
++
++	if envHeadless := os.Getenv("RP_HEADLESS"); envHeadless != "" {
++		if v, err := strconv.ParseBool(envHeadless); err == nil {
++			*headless = v
++		}
++	}
++	if envFrames := os.Getenv("RP_HEADLESS_FRAMES"); envFrames != "" {
++		if v, err := strconv.Atoi(envFrames); err == nil {
++			*frames = v
++		}
++	}
+ 
+-	if err := ebiten.RunGame(game); err != nil {
++	if *headless {
++		if err := platform.RunHeadless(game, *frames, cfg.Viewport.Width, cfg.Viewport.Height); err != nil {
++			log.Fatal(err)
++		}
++		log.Printf("Headless run complete (%d frames)\n", *frames)
++		return
++	}
++
++	platform.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
++	platform.SetWindowTitle("rp-go: ECS Camera Prototype")
++
++	if err := platform.RunGame(game); err != nil {
+ 		log.Fatal(err)
+ 	}
+ }
+ 
+ // Utility: get first camera entity
+ func getActiveCamera(w *ecs.World) *ecs.Camera {
+ 	for _, e := range w.Entities {
+ 		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
+ 			return c
+ 		}
+ 	}
+ 	return nil
+ }
+-
 diff --git a/engine/core/game.go b/engine/core/game.go
-index 3d82a2da9d5f40603fa0d2c109e53f405ee33569..4e326473bfeb912a374d0421a0b20718577167be 100644
+index 3d82a2da9d5f40603fa0d2c109e53f405ee33569..1cef7a35bfc82231885d8993ec884614af573e0f 100644
 --- a/engine/core/game.go
 +++ b/engine/core/game.go
 @@ -1,44 +1,59 @@
  package core
  
  import (
- 	"github.com/hajimehoshi/ebiten/v2"
+-	"github.com/hajimehoshi/ebiten/v2"
  	"rp-go/engine/data"
  	"rp-go/engine/ecs"
 +	"rp-go/engine/events"
++	"rp-go/engine/platform"
  	"rp-go/engine/scenes/space"
  	"rp-go/engine/systems/camera"
  	"rp-go/engine/systems/debug"
@@ -64,19 +197,60 @@ index 3d82a2da9d5f40603fa0d2c109e53f405ee33569..4e326473bfeb912a374d0421a0b20718
 +		bus.Flush()
 +	}
 +}
-+func (g *GameWorld) Draw(screen *ebiten.Image) { g.World.Draw(screen) }
++func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
+diff --git a/engine/core/headless_test.go b/engine/core/headless_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..c0aa03ffa079fb11b93b0642c5fdce1ae6d8e77d
+--- /dev/null
++++ b/engine/core/headless_test.go
+@@ -0,0 +1,31 @@
++package core
++
++import (
++	"testing"
++
++	"rp-go/engine/ecs"
++	"rp-go/engine/platform"
++)
++
++func TestHeadlessWorldSpawnsCamera(t *testing.T) {
++	world := NewGameWorld()
++	screen := platform.NewImage(world.Config.Viewport.Width, world.Config.Viewport.Height)
++
++	for i := 0; i < 5; i++ {
++		world.Update()
++		screen.Clear()
++		world.Draw(screen)
++	}
++
++	foundCamera := false
++	for _, e := range world.World.Entities {
++		if _, ok := e.Get("Camera").(*ecs.Camera); ok {
++			foundCamera = true
++			break
++		}
++	}
++
++	if !foundCamera {
++		t.Fatalf("expected at least one camera entity after headless steps")
++	}
++}
 diff --git a/engine/data/loader.go b/engine/data/loader.go
-index 5f4c5ae130c4ee5df052ead663e93203ff8f64e8..4fc4f29ff43d5b7dd508fd15a121c4a29d756348 100644
+index 5f4c5ae130c4ee5df052ead663e93203ff8f64e8..7c112c6629ebb59fcafbc810bd3e793db15a782e 100644
 --- a/engine/data/loader.go
 +++ b/engine/data/loader.go
-@@ -1,44 +1,47 @@
+@@ -1,44 +1,51 @@
  package data
  
  import (
++	_ "embed"
  	"encoding/json"
  	"os"
  )
  
++//go:embed render_config.json
++var embeddedRenderConfig []byte
++
  type RenderConfig struct {
  	Window struct {
  		Width  int `json:"width"`
@@ -112,7 +286,8 @@ index 5f4c5ae130c4ee5df052ead663e93203ff8f64e8..4fc4f29ff43d5b7dd508fd15a121c4a2
  func LoadRenderConfig(path string) RenderConfig {
  	data, err := os.ReadFile(path)
  	if err != nil {
- 		panic(err)
+-		panic(err)
++		data = embeddedRenderConfig
  	}
  	var cfg RenderConfig
  	if err := json.Unmarshal(data, &cfg); err != nil {
@@ -143,13 +318,14 @@ index cab44ab9bcd5de48bc7619377fecb3cba9f39d3d..0a8dcbf827e7ca8edef985da509c2845
  }
  
 diff --git a/engine/ecs/components.go b/engine/ecs/components.go
-index 7766f1dbdebe7b6bb140279de8b8ba11e1cd3578..35ac0f9509cb4bcfe4f8e764390bcc8758fa1cd6 100644
+index 7766f1dbdebe7b6bb140279de8b8ba11e1cd3578..7e1bfa91481ee1709a9da25cb2c3d026733a9b0a 100644
 --- a/engine/ecs/components.go
 +++ b/engine/ecs/components.go
 @@ -1,37 +1,46 @@
  package ecs
  
- import "github.com/hajimehoshi/ebiten/v2"
+-import "github.com/hajimehoshi/ebiten/v2"
++import "rp-go/engine/platform"
  
  type Position struct{ X, Y float64 }
 +
@@ -163,7 +339,7 @@ index 7766f1dbdebe7b6bb140279de8b8ba11e1cd3578..35ac0f9509cb4bcfe4f8e764390bcc87
 -	Image  *ebiten.Image
 -	Width  int
 -	Height int
-+	Image    *ebiten.Image
++	Image    *platform.Image
 +	Width    int
 +	Height   int
  	Rotation float64
@@ -201,8 +377,95 @@ index 7766f1dbdebe7b6bb140279de8b8ba11e1cd3578..35ac0f9509cb4bcfe4f8e764390bcc87
 -func (a *Actor) Name() string { return "Actor" }
  
 +func (a *Actor) Name() string { return "Actor" }
+diff --git a/engine/ecs/scene.go b/engine/ecs/scene.go
+index 745464c3686586ccfa0419463645136699fc4193..d687ec7ec7acba11ffec64b04c08248a8a541837 100644
+--- a/engine/ecs/scene.go
++++ b/engine/ecs/scene.go
+@@ -1,13 +1,12 @@
+ package ecs
+ 
+-import "github.com/hajimehoshi/ebiten/v2"
++import "rp-go/engine/platform"
+ 
+ // Scene defines the required methods for game scenes.
+ type Scene interface {
+ 	Name() string
+ 	Init(world *World)
+ 	Update(world *World)
+-	Draw(world *World, screen *ebiten.Image)
++	Draw(world *World, screen *platform.Image)
+ 	Unload(world *World)
+ }
+-
+diff --git a/engine/ecs/system.go b/engine/ecs/system.go
+index 0001324457de62ba3d1bf1e00c03648dd5122f24..fe8d909a8405dc23d285a32225ed3fc4011c22f0 100644
+--- a/engine/ecs/system.go
++++ b/engine/ecs/system.go
+@@ -1,15 +1,14 @@
+ package ecs
+ 
+-import "github.com/hajimehoshi/ebiten/v2"
++import "rp-go/engine/platform"
+ 
+ type System interface {
+ 	Update(world *World)
+-	Draw(world *World, screen *ebiten.Image)
++	Draw(world *World, screen *platform.Image)
+ }
+ 
+ // Optional extension for ordering systems later
+ type PrioritizedSystem interface {
+ 	System
+ 	Priority() int
+ }
+-
+diff --git a/engine/ecs/world.go b/engine/ecs/world.go
+index 0667ad0331ae13b49263edf95f509764d90d6c1c..29f6823a46d1635691a0a51982870fa9cd7907dc 100644
+--- a/engine/ecs/world.go
++++ b/engine/ecs/world.go
+@@ -1,38 +1,37 @@
+ package ecs
+ 
+-import "github.com/hajimehoshi/ebiten/v2"
++import "rp-go/engine/platform"
+ 
+ type World struct {
+ 	nextID   EntityID
+ 	Entities []*Entity
+ 	Systems  []System
+ 	EventBus any
+ }
+ 
+ func NewWorld() *World {
+ 	return &World{}
+ }
+ 
+ func (w *World) NewEntity() *Entity {
+ 	e := NewEntity(w.nextID)
+ 	w.nextID++
+ 	w.Entities = append(w.Entities, e)
+ 	return e
+ }
+ 
+ func (w *World) AddSystem(s System) {
+ 	w.Systems = append(w.Systems, s)
+ }
+ 
+ func (w *World) Update() {
+ 	for _, s := range w.Systems {
+ 		s.Update(w)
+ 	}
+ }
+ 
+-func (w *World) Draw(screen *ebiten.Image) {
++func (w *World) Draw(screen *platform.Image) {
+ 	for _, s := range w.Systems {
+ 		s.Draw(w, screen)
+ 	}
+ }
+-
 diff --git a/engine/gfx/loader.go b/engine/gfx/loader.go
-index 2bcc560ec1775aae48b9b2d347a915b0b37322c7..d2a812b2d26eea74264a81184d08024e975ce58c 100644
+index 2bcc560ec1775aae48b9b2d347a915b0b37322c7..c86ee61af5fbe9e48321a91771fd580d1c17f74c 100644
 --- a/engine/gfx/loader.go
 +++ b/engine/gfx/loader.go
 @@ -1,28 +1,68 @@
@@ -215,12 +478,14 @@ index 2bcc560ec1775aae48b9b2d347a915b0b37322c7..d2a812b2d26eea74264a81184d08024e
  	"os"
 +	"sync"
  
- 	"github.com/hajimehoshi/ebiten/v2"
+-	"github.com/hajimehoshi/ebiten/v2"
++	"rp-go/engine/platform"
  )
  
+-func LoadImage(path string) *ebiten.Image {
 +type cachedImage struct {
 +	once sync.Once
-+	img  *ebiten.Image
++	img  *platform.Image
 +	err  error
 +}
 +
@@ -228,7 +493,7 @@ index 2bcc560ec1775aae48b9b2d347a915b0b37322c7..d2a812b2d26eea74264a81184d08024e
 +
 +// LoadImage returns an Ebiten image, caching decoded results so repeated
 +// requests (even across goroutines) reuse the same GPU resource.
- func LoadImage(path string) *ebiten.Image {
++func LoadImage(path string) *platform.Image {
 +	entryAny, _ := imageCache.LoadOrStore(path, &cachedImage{})
 +	entry := entryAny.(*cachedImage)
 +
@@ -260,7 +525,7 @@ index 2bcc560ec1775aae48b9b2d347a915b0b37322c7..d2a812b2d26eea74264a81184d08024e
 +	wg.Wait()
 +}
 +
-+func decodeImage(path string) (*ebiten.Image, error) {
++func decodeImage(path string) (*platform.Image, error) {
  	file, err := os.Open(path)
  	if err != nil {
 -		fmt.Printf("[GFX] Failed to open image: %s (%v)\n", path, err)
@@ -277,11 +542,430 @@ index 2bcc560ec1775aae48b9b2d347a915b0b37322c7..d2a812b2d26eea74264a81184d08024e
  	}
  
 -	return ebiten.NewImageFromImage(img)
-+	return ebiten.NewImageFromImage(img), nil
++	return platform.NewImageFromImage(img), nil
  }
 -
+diff --git a/engine/platform/platform_desktop.go b/engine/platform/platform_desktop.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..ff740110d7aad7a7acf91f7c31d70a5ba7d63ee8
+--- /dev/null
++++ b/engine/platform/platform_desktop.go
+@@ -0,0 +1,200 @@
++//go:build !headless
++
++package platform
++
++import (
++	"image"
++	"image/color"
++
++	"github.com/hajimehoshi/ebiten/v2"
++	"github.com/hajimehoshi/ebiten/v2/inpututil"
++	"github.com/hajimehoshi/ebiten/v2/text"
++	"golang.org/x/image/font"
++)
++
++type Image struct {
++	native *ebiten.Image
++}
++
++func newImageFromNative(img *ebiten.Image) *Image {
++	if img == nil {
++		return nil
++	}
++	return &Image{native: img}
++}
++
++func NativeImage(img *Image) *ebiten.Image {
++	if img == nil {
++		return nil
++	}
++	return img.native
++}
++
++func NewImage(width, height int) *Image {
++	return &Image{native: ebiten.NewImage(width, height)}
++}
++
++func NewImageFromImage(src image.Image) *Image {
++	return &Image{native: ebiten.NewImageFromImage(src)}
++}
++
++func (img *Image) Clear() {
++	img.native.Clear()
++}
++
++func (img *Image) Fill(c color.Color) {
++	img.native.Fill(c)
++}
++
++func (img *Image) Bounds() image.Rectangle {
++	return img.native.Bounds()
++}
++
++func (img *Image) DrawImage(src *Image, op *DrawImageOptions) {
++	if img == nil || src == nil {
++		return
++	}
++	var nativeOp *ebiten.DrawImageOptions
++	if op != nil {
++		nativeOp = op.native
++	}
++	img.native.DrawImage(src.native, nativeOp)
++}
++
++type DrawImageOptions struct {
++	native *ebiten.DrawImageOptions
++}
++
++func NewDrawImageOptions() *DrawImageOptions {
++	return &DrawImageOptions{native: &ebiten.DrawImageOptions{}}
++}
++
++func (op *DrawImageOptions) SetFilter(f Filter) {
++	if op == nil {
++		return
++	}
++	switch f {
++	case FilterNearest:
++		op.native.Filter = ebiten.FilterNearest
++	}
++}
++
++func (op *DrawImageOptions) Scale(x, y float64) {
++	if op == nil {
++		return
++	}
++	op.native.GeoM.Scale(x, y)
++}
++
++func (op *DrawImageOptions) Rotate(theta float64) {
++	if op == nil {
++		return
++	}
++	op.native.GeoM.Rotate(theta)
++}
++
++func (op *DrawImageOptions) Translate(x, y float64) {
++	if op == nil {
++		return
++	}
++	op.native.GeoM.Translate(x, y)
++}
++
++type Filter int
++
++const (
++	FilterNearest Filter = iota
++)
++
++type Key = ebiten.Key
++
++const (
++	KeyArrowLeft  Key = ebiten.KeyArrowLeft
++	KeyArrowRight Key = ebiten.KeyArrowRight
++	KeyArrowUp    Key = ebiten.KeyArrowUp
++	KeyArrowDown  Key = ebiten.KeyArrowDown
++	KeyA          Key = ebiten.KeyA
++	KeyD          Key = ebiten.KeyD
++	KeyW          Key = ebiten.KeyW
++	KeyS          Key = ebiten.KeyS
++	KeyQ          Key = ebiten.KeyQ
++	KeyE          Key = ebiten.KeyE
++	KeyMinus      Key = ebiten.KeyMinus
++	KeyEqual      Key = ebiten.KeyEqual
++	Key0          Key = ebiten.Key0
++	KeyKP0        Key = ebiten.KeyKP0
++	KeyKPAdd      Key = ebiten.KeyKPAdd
++	KeyKPSubtract Key = ebiten.KeyKPSubtract
++)
++
++func IsKeyPressed(k Key) bool {
++	return ebiten.IsKeyPressed(k)
++}
++
++func IsKeyJustPressed(k Key) bool {
++	return inpututil.IsKeyJustPressed(k)
++}
++
++func Wheel() (float64, float64) {
++	return ebiten.Wheel()
++}
++
++func ActualFPS() float64 {
++	return ebiten.ActualFPS()
++}
++
++func SetWindowSize(w, h int) {
++	ebiten.SetWindowSize(w, h)
++}
++
++func SetWindowTitle(title string) {
++	ebiten.SetWindowTitle(title)
++}
++
++type Game interface {
++	Update() error
++	Draw(screen *Image)
++	Layout(outsideWidth, outsideHeight int) (int, int)
++}
++
++type gameAdapter struct {
++	game Game
++}
++
++func (g *gameAdapter) Update() error {
++	return g.game.Update()
++}
++
++func (g *gameAdapter) Draw(screen *ebiten.Image) {
++	g.game.Draw(newImageFromNative(screen))
++}
++
++func (g *gameAdapter) Layout(outW, outH int) (int, int) {
++	return g.game.Layout(outW, outH)
++}
++
++func RunGame(game Game) error {
++	return ebiten.RunGame(&gameAdapter{game: game})
++}
++
++func RunHeadless(game Game, frames int, width, height int) error {
++	if frames <= 0 {
++		return nil
++	}
++	offscreen := NewImage(width, height)
++	for i := 0; i < frames; i++ {
++		if err := game.Update(); err != nil {
++			return err
++		}
++		offscreen.Clear()
++		game.Draw(offscreen)
++	}
++	return nil
++}
++
++func DrawText(dst *Image, str string, face font.Face, x, y int, clr color.Color) {
++	if dst == nil {
++		return
++	}
++	text.Draw(dst.native, str, face, x, y, clr)
++}
+diff --git a/engine/platform/platform_headless.go b/engine/platform/platform_headless.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..7edc8cfa08cb5bedbca3e0c80ca4eb74b367e099
+--- /dev/null
++++ b/engine/platform/platform_headless.go
+@@ -0,0 +1,149 @@
++//go:build headless
++
++package platform
++
++import (
++	"errors"
++	"image"
++	"image/color"
++	"image/draw"
++	"sync"
++
++	"golang.org/x/image/font"
++)
++
++type Image struct {
++	mu     sync.Mutex
++	rgba   *image.RGBA
++	width  int
++	height int
++}
++
++func newImageFromNative(img *Image) *Image {
++	return img
++}
++
++func NativeImage(img *Image) *Image {
++	return img
++}
++
++func NewImage(width, height int) *Image {
++	if width <= 0 {
++		width = 1
++	}
++	if height <= 0 {
++		height = 1
++	}
++	return &Image{rgba: image.NewRGBA(image.Rect(0, 0, width, height)), width: width, height: height}
++}
++
++func NewImageFromImage(src image.Image) *Image {
++	bounds := src.Bounds()
++	dst := image.NewRGBA(bounds)
++	draw.Draw(dst, bounds, src, bounds.Min, draw.Src)
++	return &Image{rgba: dst, width: bounds.Dx(), height: bounds.Dy()}
++}
++
++func (img *Image) Clear() {
++	if img == nil {
++		return
++	}
++	img.Fill(color.RGBA{})
++}
++
++func (img *Image) Fill(c color.Color) {
++	if img == nil {
++		return
++	}
++	img.mu.Lock()
++	defer img.mu.Unlock()
++	draw.Draw(img.rgba, img.rgba.Bounds(), &image.Uniform{C: c}, image.Point{}, draw.Src)
++}
++
++func (img *Image) Bounds() image.Rectangle {
++	if img == nil {
++		return image.Rect(0, 0, 0, 0)
++	}
++	return image.Rect(0, 0, img.width, img.height)
++}
++
++func (img *Image) DrawImage(src *Image, _ *DrawImageOptions) {
++	if img == nil || src == nil {
++		return
++	}
++	img.mu.Lock()
++	defer img.mu.Unlock()
++	src.mu.Lock()
++	defer src.mu.Unlock()
++	draw.Draw(img.rgba, img.rgba.Bounds(), src.rgba, image.Point{}, draw.Over)
++}
++
++type DrawImageOptions struct{}
++
++func NewDrawImageOptions() *DrawImageOptions { return &DrawImageOptions{} }
++
++func (op *DrawImageOptions) SetFilter(Filter)       {}
++func (op *DrawImageOptions) Scale(x, y float64)     {}
++func (op *DrawImageOptions) Rotate(theta float64)   {}
++func (op *DrawImageOptions) Translate(x, y float64) {}
++
++type Filter int
++
++const (
++	FilterNearest Filter = iota
++)
++
++type Key int
++
++const (
++	KeyArrowLeft Key = iota
++	KeyArrowRight
++	KeyArrowUp
++	KeyArrowDown
++	KeyA
++	KeyD
++	KeyW
++	KeyS
++	KeyQ
++	KeyE
++	KeyMinus
++	KeyEqual
++	Key0
++	KeyKP0
++	KeyKPAdd
++	KeyKPSubtract
++)
++
++func IsKeyPressed(Key) bool     { return false }
++func IsKeyJustPressed(Key) bool { return false }
++func Wheel() (float64, float64) { return 0, 0 }
++func ActualFPS() float64        { return 60 }
++func SetWindowSize(int, int)    {}
++func SetWindowTitle(string)     {}
++
++type Game interface {
++	Update() error
++	Draw(screen *Image)
++	Layout(outsideWidth, outsideHeight int) (int, int)
++}
++
++func RunGame(Game) error {
++	return errors.New("headless build does not support interactive RunGame")
++}
++
++func RunHeadless(game Game, frames int, width, height int) error {
++	if frames <= 0 {
++		return nil
++	}
++	screen := NewImage(width, height)
++	for i := 0; i < frames; i++ {
++		if err := game.Update(); err != nil {
++			return err
++		}
++		screen.Clear()
++		game.Draw(screen)
++	}
++	return nil
++}
++
++func DrawText(dst *Image, _ string, _ font.Face, _ int, _ int, _ color.Color) {}
+diff --git a/engine/scenes/planet/scene.go b/engine/scenes/planet/scene.go
+index 3563cfd3ac591e6a16023e725a3284a7b2b93cd3..410a87371926e11c0179b81d5a7b5b29b306ccbf 100644
+--- a/engine/scenes/planet/scene.go
++++ b/engine/scenes/planet/scene.go
+@@ -1,49 +1,48 @@
+ package planet
+ 
+ import (
+-	"github.com/hajimehoshi/ebiten/v2"
+ 	"rp-go/engine/ecs"
+ 	"rp-go/engine/gfx"
++	"rp-go/engine/platform"
+ )
+ 
+ type Scene struct{ initialized bool }
+ 
+ func (s *Scene) Name() string { return "planet" }
+ 
+ func (s *Scene) Init(w *ecs.World) {
+ 	if s.initialized {
+ 		return
+ 	}
+ 	s.initialized = true
+ 
+ 	var player *ecs.Entity
+ 	for _, e := range w.Entities {
+ 		if a, ok := e.Get("Actor").(*ecs.Actor); ok && a.ID == "player" {
+ 			player = e
+ 			break
+ 		}
+ 	}
+ 
+ 	if player == nil {
+ 		player = w.NewEntity()
+ 		player.Add(&ecs.Actor{
+ 			ID:         "player",
+ 			Archetype:  "character",
+ 			Persistent: true,
+ 		})
+ 		player.Add(&ecs.Position{X: 100, Y: 100})
+ 		player.Add(&ecs.Velocity{})
+ 		player.Add(&ecs.CameraTarget{})
+ 	}
+ 
+ 	playerImg := gfx.LoadImage("assets/entities/player.png")
+ 	player.Add(&ecs.Sprite{Image: playerImg, Width: 32, Height: 32})
+ 
+ 	cam := w.NewEntity()
+ 	cam.Add(&ecs.Camera{X: 0, Y: 0, Scale: 2.0, Target: player})
+ }
+ 
+-func (s *Scene) Update(w *ecs.World) {}
+-func (s *Scene) Draw(w *ecs.World, screen *ebiten.Image) {}
+-func (s *Scene) Unload(w *ecs.World) {}
+-
++func (s *Scene) Update(w *ecs.World)                       {}
++func (s *Scene) Draw(w *ecs.World, screen *platform.Image) {}
++func (s *Scene) Unload(w *ecs.World)                       {}
 diff --git a/engine/scenes/space/scene.go b/engine/scenes/space/scene.go
-index 99cb0fa82af3138abd0972081ab11cd5d61b63f3..a410939deb2ba648b2f876cec42d9a8e937e38dd 100644
+index 99cb0fa82af3138abd0972081ab11cd5d61b63f3..38f60aa91dd9618f948812df6dca825207077136 100644
 --- a/engine/scenes/space/scene.go
 +++ b/engine/scenes/space/scene.go
 @@ -1,63 +1,67 @@
@@ -291,9 +975,10 @@ index 99cb0fa82af3138abd0972081ab11cd5d61b63f3..a410939deb2ba648b2f876cec42d9a8e
  	"fmt"
  	"image/color"
  
- 	"github.com/hajimehoshi/ebiten/v2"
+-	"github.com/hajimehoshi/ebiten/v2"
  	"rp-go/engine/ecs"
  	"rp-go/engine/gfx"
++	"rp-go/engine/platform"
  )
  
  type Scene struct{ initialized bool }
@@ -345,7 +1030,8 @@ index 99cb0fa82af3138abd0972081ab11cd5d61b63f3..a410939deb2ba648b2f876cec42d9a8e
 -
  func (s *Scene) Update(w *ecs.World) {}
  
- func (s *Scene) Draw(w *ecs.World, screen *ebiten.Image) {
+-func (s *Scene) Draw(w *ecs.World, screen *ebiten.Image) {
++func (s *Scene) Draw(w *ecs.World, screen *platform.Image) {
  	// ✅ Proper background fill
  	screen.Fill(color.RGBA{0, 0, 32, 255})
  }
@@ -354,21 +1040,57 @@ index 99cb0fa82af3138abd0972081ab11cd5d61b63f3..a410939deb2ba648b2f876cec42d9a8e
  	fmt.Println("[SCENE] Unloading: Space")
  }
 -
+diff --git a/engine/systems/actor/system.go b/engine/systems/actor/system.go
+index 1986c4044c059d83c169ec32a32231ed9a36a0fe..86373b425b01c76713d0675cf9d1fff9d221cd90 100644
+--- a/engine/systems/actor/system.go
++++ b/engine/systems/actor/system.go
+@@ -1,30 +1,29 @@
+ package actor
+ 
+ import (
+ 	"fmt"
+ 
+-	"github.com/hajimehoshi/ebiten/v2"
+ 	"rp-go/engine/ecs"
++	"rp-go/engine/platform"
+ )
+ 
+ type System struct {
+ 	actors map[string]*ecs.Entity
+ }
+ 
+ func (s *System) Update(w *ecs.World) {
+ 	if s.actors == nil {
+ 		s.actors = make(map[string]*ecs.Entity)
+ 	}
+ 
+ 	for _, e := range w.Entities {
+ 		if a, ok := e.Get("Actor").(*ecs.Actor); ok {
+ 			if _, exists := s.actors[a.ID]; !exists {
+ 				s.actors[a.ID] = e
+ 				fmt.Printf("[ACTOR] Registered %s (%s)\n", a.ID, a.Archetype)
+ 			}
+ 		}
+ 	}
+ }
+ 
+-func (s *System) Draw(*ecs.World, *ebiten.Image) {}
+-
++func (s *System) Draw(*ecs.World, *platform.Image) {}
 diff --git a/engine/systems/camera/system.go b/engine/systems/camera/system.go
-index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..855ebf5cc99b0bb1939ec7f1fd56345cf9bc0e35 100644
+index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..d788a33d9a23c0929f51d310bbe7d27ef31a6f91 100644
 --- a/engine/systems/camera/system.go
 +++ b/engine/systems/camera/system.go
-@@ -1,62 +1,166 @@
+@@ -1,62 +1,164 @@
  package camera
  
  import (
  	"math"
  
- 	"github.com/hajimehoshi/ebiten/v2"
-+	"github.com/hajimehoshi/ebiten/v2/inpututil"
-+
+-	"github.com/hajimehoshi/ebiten/v2"
  	"rp-go/engine/ecs"
 +	"rp-go/engine/events"
++	"rp-go/engine/platform"
  )
  
 -type System struct{}
@@ -462,16 +1184,16 @@ index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..855ebf5cc99b0bb1939ec7f1fd56345c
 +
 +	// Handle zoom input (keyboard + mouse wheel).
 +	zoomDelta := 0.0
-+	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyKPSubtract) {
++	if platform.IsKeyJustPressed(platform.KeyMinus) || platform.IsKeyJustPressed(platform.KeyKPSubtract) {
 +		zoomDelta -= s.cfg.ZoomStep
 +	}
-+	if inpututil.IsKeyJustPressed(ebiten.KeyEqual) || inpututil.IsKeyJustPressed(ebiten.KeyKPAdd) {
++	if platform.IsKeyJustPressed(platform.KeyEqual) || platform.IsKeyJustPressed(platform.KeyKPAdd) {
 +		zoomDelta += s.cfg.ZoomStep
 +	}
-+	if inpututil.IsKeyJustPressed(ebiten.Key0) || inpututil.IsKeyJustPressed(ebiten.KeyKP0) {
++	if platform.IsKeyJustPressed(platform.Key0) || platform.IsKeyJustPressed(platform.KeyKP0) {
 +		cam.TargetScale = clamp(cam.DefaultScale, cam.MinScale, cam.MaxScale)
 +	}
-+	_, wheelY := ebiten.Wheel()
++	_, wheelY := platform.Wheel()
 +	if wheelY != 0 {
 +		zoomDelta += wheelY * s.cfg.ZoomStep
 +	}
@@ -495,10 +1217,12 @@ index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..855ebf5cc99b0bb1939ec7f1fd56345c
 +
  	// Manual rotation (Q / E)
  	const rotSpeed = 0.03
- 	if ebiten.IsKeyPressed(ebiten.KeyQ) {
+-	if ebiten.IsKeyPressed(ebiten.KeyQ) {
++	if platform.IsKeyPressed(platform.KeyQ) {
  		cam.Rotation -= rotSpeed
  	}
- 	if ebiten.IsKeyPressed(ebiten.KeyE) {
+-	if ebiten.IsKeyPressed(ebiten.KeyE) {
++	if platform.IsKeyPressed(platform.KeyE) {
  		cam.Rotation += rotSpeed
  	}
  
@@ -515,7 +1239,8 @@ index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..855ebf5cc99b0bb1939ec7f1fd56345c
  	}
  }
  
- func (s *System) Draw(*ecs.World, *ebiten.Image) {}
+-func (s *System) Draw(*ecs.World, *ebiten.Image) {}
++func (s *System) Draw(*ecs.World, *platform.Image) {}
  
 +func clamp(v, min, max float64) float64 {
 +	if v < min {
@@ -527,21 +1252,25 @@ index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..855ebf5cc99b0bb1939ec7f1fd56345c
 +	return v
 +}
 diff --git a/engine/systems/debug/debug_camera.go b/engine/systems/debug/debug_camera.go
-index e27d8f769c36eff4a04330f87a12e6762140a61a..9198207eab35cab57b43352d14061dfb5accf9ed 100644
+index e27d8f769c36eff4a04330f87a12e6762140a61a..213cddccb15578737133a77b6e6226eb8c50822a 100644
 --- a/engine/systems/debug/debug_camera.go
 +++ b/engine/systems/debug/debug_camera.go
-@@ -3,34 +3,46 @@ package debug
+@@ -1,36 +1,48 @@
+ package debug
+ 
  import (
  	"fmt"
  	"image/color"
  
- 	"github.com/hajimehoshi/ebiten/v2"
- 	"github.com/hajimehoshi/ebiten/v2/text"
+-	"github.com/hajimehoshi/ebiten/v2"
+-	"github.com/hajimehoshi/ebiten/v2/text"
  	"golang.org/x/image/font/basicfont"
  	"rp-go/engine/ecs"
++	"rp-go/engine/platform"
  )
  
- func DrawCameraInfo(w *ecs.World, screen *ebiten.Image) {
+-func DrawCameraInfo(w *ecs.World, screen *ebiten.Image) {
++func DrawCameraInfo(w *ecs.World, screen *platform.Image) {
  	var cam *ecs.Camera
  	for _, e := range w.Entities {
  		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
@@ -554,9 +1283,12 @@ index e27d8f769c36eff4a04330f87a12e6762140a61a..9198207eab35cab57b43352d14061dfb
  		return
  	}
  
- 	sw := float64(screen.Bounds().Dx())
- 	sh := float64(screen.Bounds().Dy())
+-	sw := float64(screen.Bounds().Dx())
+-	sh := float64(screen.Bounds().Dy())
 -	
++	bounds := screen.Bounds()
++	sw := float64(bounds.Dx())
++	sh := float64(bounds.Dy())
 +
 +	minScale := cam.MinScale
 +	if minScale <= 0 {
@@ -578,14 +1310,198 @@ index e27d8f769c36eff4a04330f87a12e6762140a61a..9198207eab35cab57b43352d14061dfb
 +		cam.X, cam.Y, cam.Scale, targetScale, minScale, maxScale, sw, sh,
  	)
  
- 	text.Draw(screen, msg, basicfont.Face7x13, 10, 20, color.White)
+-	text.Draw(screen, msg, basicfont.Face7x13, 10, 20, color.White)
++	platform.DrawText(screen, msg, basicfont.Face7x13, 10, 20, color.White)
+ }
+-
+diff --git a/engine/systems/debug/debug_entities.go b/engine/systems/debug/debug_entities.go
+index 35bf94641db73265144f8d012ac507267adb1fab..69707cae45a450f2d06d414313d651531cf1b9a9 100644
+--- a/engine/systems/debug/debug_entities.go
++++ b/engine/systems/debug/debug_entities.go
+@@ -1,41 +1,39 @@
+ package debug
+ 
+ import (
+ 	"fmt"
+ 	"image/color"
+ 
+-	"github.com/hajimehoshi/ebiten/v2"
+-	"github.com/hajimehoshi/ebiten/v2/text"
+ 	"golang.org/x/image/font/basicfont"
+ 	"rp-go/engine/ecs"
++	"rp-go/engine/platform"
+ )
+ 
+-func DrawEntityDiagnostics(w *ecs.World, screen *ebiten.Image, frame int) {
++func DrawEntityDiagnostics(w *ecs.World, screen *platform.Image, frame int) {
+ 	y := 100
+ 
+ 	for _, e := range w.Entities {
+ 		pos, ok1 := e.Get("Position").(*ecs.Position)
+ 		sprite, ok2 := e.Get("Sprite").(*ecs.Sprite)
+ 		if !ok1 || !ok2 || sprite.Image == nil {
+ 			continue
+ 		}
+ 
+ 		imgW := float64(sprite.Image.Bounds().Dx())
+ 		imgH := float64(sprite.Image.Bounds().Dy())
+ 		playerScale := float64(sprite.Width) / imgW
+ 		totalScale := playerScale // (cam.Scale handled in render system)
+ 
+ 		entityInfo := fmt.Sprintf(
+ 			"Entity %d | World(%.1f, %.1f) | Sprite %.0fx%.0f | Scale: %.2f",
+ 			e.ID, pos.X, pos.Y, imgW, imgH, totalScale,
+ 		)
+ 
+-		text.Draw(screen, entityInfo, basicfont.Face7x13, 10, y, color.RGBA{180, 220, 255, 255})
++		platform.DrawText(screen, entityInfo, basicfont.Face7x13, 10, y, color.RGBA{180, 220, 255, 255})
+ 		y += 14
+ 
+ 		if frame%15 == 0 {
+ 			fmt.Println("[ENTITY DEBUG]", entityInfo)
+ 		}
+ 	}
+ }
+-
+diff --git a/engine/systems/debug/debug_grid.go b/engine/systems/debug/debug_grid.go
+index baaf19fb206e471bd89b0675e425bd3cb348931a..654bed9ef5f332838363336c6069ae86ba7cd4f3 100644
+--- a/engine/systems/debug/debug_grid.go
++++ b/engine/systems/debug/debug_grid.go
+@@ -1,74 +1,74 @@
+ package debug
+ 
+ import (
+ 	"image/color"
+ 	"math"
+ 
+-	"github.com/hajimehoshi/ebiten/v2"
+ 	"rp-go/engine/ecs"
+ 	"rp-go/engine/events"
++	"rp-go/engine/platform"
+ )
+ 
+ // DrawDebugGrid renders a faint grid that follows the camera.
+-func DrawDebugGrid(w *ecs.World, screen *ebiten.Image) {
++func DrawDebugGrid(w *ecs.World, screen *platform.Image) {
+ 	var cam *ecs.Camera
+ 	for _, e := range w.Entities {
+ 		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
+ 			cam = c
+ 			break
+ 		}
+ 	}
+ 	if cam == nil {
+ 		return
+ 	}
+ 
+-	sw := float64(screen.Bounds().Dx())
+-	sh := float64(screen.Bounds().Dy())
++	bounds := screen.Bounds()
++	sw := float64(bounds.Dx())
++	sh := float64(bounds.Dy())
+ 	tileSize := 32.0
+ 	gridColor := color.RGBA{90, 90, 110, 100}
+ 
+ 	left := cam.X - (sw / 2 / cam.Scale)
+ 	right := cam.X + (sw / 2 / cam.Scale)
+ 	top := cam.Y - (sh / 2 / cam.Scale)
+ 	bottom := cam.Y + (sh / 2 / cam.Scale)
+ 
+ 	startX := math.Floor(left/tileSize) * tileSize
+ 	startY := math.Floor(top/tileSize) * tileSize
+ 
+-	line := ebiten.NewImage(1, 1)
++	line := platform.NewImage(1, 1)
+ 	line.Fill(gridColor)
+ 
+ 	for x := startX; x <= right; x += tileSize {
+-		screenX := (x - cam.X) * cam.Scale + sw/2
++		screenX := (x-cam.X)*cam.Scale + sw/2
+ 		if screenX < 0 || screenX > sw {
+ 			continue
+ 		}
+-		op := &ebiten.DrawImageOptions{}
+-		op.GeoM.Scale(1, sh)
+-		op.GeoM.Translate(screenX, 0)
++		op := platform.NewDrawImageOptions()
++		op.Scale(1, sh)
++		op.Translate(screenX, 0)
+ 		screen.DrawImage(line, op)
+ 	}
+ 
+ 	for y := startY; y <= bottom; y += tileSize {
+-		screenY := (y - cam.Y) * cam.Scale + sh/2
++		screenY := (y-cam.Y)*cam.Scale + sh/2
+ 		if screenY < 0 || screenY > sh {
+ 			continue
+ 		}
+-		op := &ebiten.DrawImageOptions{}
+-		op.GeoM.Scale(sw, 1)
+-		op.GeoM.Translate(0, screenY)
++		op := platform.NewDrawImageOptions()
++		op.Scale(sw, 1)
++		op.Translate(0, screenY)
+ 		screen.DrawImage(line, op)
+ 	}
+ 
+ 	// Subscribe to debug toggle event (show/hide grid)
+ 	if bus, ok := w.EventBus.(*events.TypedBus); ok && bus != nil {
+ 		events.Subscribe(bus, func(e events.DebugToggleEvent) {
+ 			if e.Enabled {
+ 				gridColor.A = 120
+ 			} else {
+ 				gridColor.A = 0
+ 			}
+ 		})
+ 	}
+ }
+-
+diff --git a/engine/systems/debug/debug_player.go b/engine/systems/debug/debug_player.go
+index fc6b7a3a0f973b47d5127ece98328be484efb715..8c01f3822cc49908c3ca9825884327e3d5f7ef85 100644
+--- a/engine/systems/debug/debug_player.go
++++ b/engine/systems/debug/debug_player.go
+@@ -1,33 +1,31 @@
+ package debug
+ 
+ import (
+ 	"fmt"
+ 	"image/color"
+ 
+-	"github.com/hajimehoshi/ebiten/v2"
+-	"github.com/hajimehoshi/ebiten/v2/text"
+ 	"golang.org/x/image/font/basicfont"
+ 	"rp-go/engine/ecs"
++	"rp-go/engine/platform"
+ )
+ 
+-func DrawPlayerInfo(w *ecs.World, screen *ebiten.Image) {
++func DrawPlayerInfo(w *ecs.World, screen *platform.Image) {
+ 	var playerPos *ecs.Position
+ 	for _, e := range w.Entities {
+ 		if e.Has("CameraTarget") {
+ 			if pos, ok := e.Get("Position").(*ecs.Position); ok {
+ 				playerPos = pos
+ 				break
+ 			}
+ 		}
+ 	}
+ 	if playerPos == nil {
+ 		return
+ 	}
+ 
+ 	msg := fmt.Sprintf(
+ 		"Player: (%.1f, %.1f)\n",
+ 		playerPos.X, playerPos.Y,
+ 	)
+-	text.Draw(screen, msg, basicfont.Face7x13, 10, 60, color.RGBA{200, 255, 200, 255})
++	platform.DrawText(screen, msg, basicfont.Face7x13, 10, 60, color.RGBA{200, 255, 200, 255})
  }
 -
 diff --git a/engine/systems/debug/system.go b/engine/systems/debug/system.go
-index 53fd2a3d648b8177e8c94e80f979647351ae8f5b..181f033e2ce56920f07124b5c112a819b0c1e584 100644
+index 53fd2a3d648b8177e8c94e80f979647351ae8f5b..60bff132dccee6e0376d7de56019eee1d588fc91 100644
 --- a/engine/systems/debug/system.go
 +++ b/engine/systems/debug/system.go
-@@ -1,33 +1,57 @@
+@@ -1,33 +1,56 @@
  package debug
  
  import (
@@ -593,17 +1509,19 @@ index 53fd2a3d648b8177e8c94e80f979647351ae8f5b..181f033e2ce56920f07124b5c112a819
  	"image/color"
 +	"strings"
  
- 	"github.com/hajimehoshi/ebiten/v2"
- 	"github.com/hajimehoshi/ebiten/v2/text"
+-	"github.com/hajimehoshi/ebiten/v2"
+-	"github.com/hajimehoshi/ebiten/v2/text"
  	"golang.org/x/image/font/basicfont"
  	"rp-go/engine/ecs"
++	"rp-go/engine/platform"
  )
  
  type System struct{}
  
  func (s *System) Update(*ecs.World) {}
  
- func (s *System) Draw(w *ecs.World, screen *ebiten.Image) {
+-func (s *System) Draw(w *ecs.World, screen *ebiten.Image) {
++func (s *System) Draw(w *ecs.World, screen *platform.Image) {
  	var cam *ecs.Camera
  	for _, e := range w.Entities {
  		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
@@ -614,7 +1532,7 @@ index 53fd2a3d648b8177e8c94e80f979647351ae8f5b..181f033e2ce56920f07124b5c112a819
  
 -	msg := fmt.Sprintf("FPS: %.0f\nEntities: %d", ebiten.ActualFPS(), len(w.Entities))
 +	var builder strings.Builder
-+	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", ebiten.ActualFPS(), len(w.Entities)))
++	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", platform.ActualFPS(), len(w.Entities)))
 +
  	if cam != nil {
 -		msg += fmt.Sprintf("\nCam(%.1f, %.1f) Scale %.2f Rot %.1f°",
@@ -646,13 +1564,210 @@ index 53fd2a3d648b8177e8c94e80f979647351ae8f5b..181f033e2ce56920f07124b5c112a819
 -	text.Draw(screen, msg, basicfont.Face7x13, 10, 20, color.White)
 -}
  
-+	text.Draw(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
++	platform.DrawText(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
 +}
+diff --git a/engine/systems/input/system.go b/engine/systems/input/system.go
+index 71c63e26399724d010626e9e0defa0fa5a2375ae..d1227891423c17b0ce57e5a20d08976332687cd3 100644
+--- a/engine/systems/input/system.go
++++ b/engine/systems/input/system.go
+@@ -1,33 +1,32 @@
+ package input
+ 
+ import (
+-	"github.com/hajimehoshi/ebiten/v2"
+ 	"rp-go/engine/ecs"
++	"rp-go/engine/platform"
+ )
+ 
+ type System struct{}
+ 
+ func (s *System) Update(w *ecs.World) {
+ 	for _, e := range w.Entities {
+ 		v, ok := e.Get("Velocity").(*ecs.Velocity)
+ 		if !ok {
+ 			continue
+ 		}
+ 		v.VX, v.VY = 0, 0
+-		if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
++		if platform.IsKeyPressed(platform.KeyArrowLeft) || platform.IsKeyPressed(platform.KeyA) {
+ 			v.VX = -2
+ 		}
+-		if ebiten.IsKeyPressed(ebiten.KeyArrowRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
++		if platform.IsKeyPressed(platform.KeyArrowRight) || platform.IsKeyPressed(platform.KeyD) {
+ 			v.VX = 2
+ 		}
+-		if ebiten.IsKeyPressed(ebiten.KeyArrowUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
++		if platform.IsKeyPressed(platform.KeyArrowUp) || platform.IsKeyPressed(platform.KeyW) {
+ 			v.VY = -2
+ 		}
+-		if ebiten.IsKeyPressed(ebiten.KeyArrowDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
++		if platform.IsKeyPressed(platform.KeyArrowDown) || platform.IsKeyPressed(platform.KeyS) {
+ 			v.VY = 2
+ 		}
+ 	}
+ }
+ 
+-func (s *System) Draw(*ecs.World, *ebiten.Image) {}
+-
++func (s *System) Draw(*ecs.World, *platform.Image) {}
+diff --git a/engine/systems/movement/system.go b/engine/systems/movement/system.go
+index e4d6a59d8f88818dd391f818174ca1913154d6ab..d40025737ce2d779828679d12fcfbe2ea1408bb1 100644
+--- a/engine/systems/movement/system.go
++++ b/engine/systems/movement/system.go
+@@ -1,39 +1,38 @@
+ package movement
+ 
+ import (
+-	"github.com/hajimehoshi/ebiten/v2"
+ 	"rp-go/engine/ecs"
+ 	"rp-go/engine/events"
++	"rp-go/engine/platform"
+ )
+ 
+ type System struct{}
+ 
+ func (s *System) Update(w *ecs.World) {
+ 	for _, e := range w.Entities {
+ 		pos, ok1 := e.Get("Position").(*ecs.Position)
+ 		vel, ok2 := e.Get("Velocity").(*ecs.Velocity)
+ 		if !ok1 || !ok2 {
+ 			continue
+ 		}
+ 
+ 		// 2D movement
+ 		if vel.VX == 0 && vel.VY == 0 {
+ 			continue
+ 		}
+ 
+ 		pos.X += vel.VX
+ 		pos.Y += vel.VY
+ 
+ 		// Publish movement event safely
+ 		if bus, ok := w.EventBus.(*events.TypedBus); ok && bus != nil {
+ 			events.Queue(bus, events.EntityMovedEvent{
+ 				EntityID: int(e.ID),
+ 				X:        pos.X,
+ 				Y:        pos.Y,
+ 			})
+ 		}
+ 	}
+ }
+ 
+-func (s *System) Draw(*ecs.World, *ebiten.Image) {}
+-
++func (s *System) Draw(*ecs.World, *platform.Image) {}
+diff --git a/engine/systems/render/system.go b/engine/systems/render/system.go
+index 1faf786045985d259f4200c3b60a5beb4ff91df8..2cd6e89f4035e2df63d3bc5bc6a936e3c1d70de9 100644
+--- a/engine/systems/render/system.go
++++ b/engine/systems/render/system.go
+@@ -1,63 +1,63 @@
+ package render
+ 
+ import (
+ 	"fmt"
+ 	"math"
+ 
+-	"github.com/hajimehoshi/ebiten/v2"
+ 	"rp-go/engine/ecs"
++	"rp-go/engine/platform"
+ )
+ 
+ type System struct{}
+ 
+ func (s *System) Update(*ecs.World) {}
+ 
+-func (s *System) Draw(w *ecs.World, screen *ebiten.Image) {
++func (s *System) Draw(w *ecs.World, screen *platform.Image) {
+ 	var cam *ecs.Camera
+ 	for _, e := range w.Entities {
+ 		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
+ 			cam = c
+ 			break
+ 		}
+ 	}
+ 	if cam == nil {
+ 		fmt.Println("[RENDER] ⚠️ No camera found")
+ 		return
+ 	}
+ 
+-	sw := float64(screen.Bounds().Dx())
+-	sh := float64(screen.Bounds().Dy())
++	bounds := screen.Bounds()
++	sw := float64(bounds.Dx())
++	sh := float64(bounds.Dy())
+ 	halfW := sw / 2
+ 	halfH := sh / 2
+ 
+ 	drawn := 0
+ 	for _, e := range w.Entities {
+ 		pos, ok1 := e.Get("Position").(*ecs.Position)
+ 		sprite, ok2 := e.Get("Sprite").(*ecs.Sprite)
+ 		if !ok1 || !ok2 || sprite.Image == nil {
+ 			continue
+ 		}
+ 
+-		op := &ebiten.DrawImageOptions{}
+-		op.Filter = ebiten.FilterNearest
++		op := platform.NewDrawImageOptions()
++		op.SetFilter(platform.FilterNearest)
+ 
+ 		entityScale := float64(sprite.Width) / float64(sprite.Image.Bounds().Dx())
+ 		totalScale := math.Max(0.01, cam.Scale*entityScale)
+-		op.GeoM.Scale(totalScale, totalScale)
+-		op.GeoM.Rotate(sprite.Rotation + cam.Rotation)
++		op.Scale(totalScale, totalScale)
++		op.Rotate(sprite.Rotation + cam.Rotation)
+ 
+ 		drawX := (pos.X-cam.X)*cam.Scale + halfW - (float64(sprite.Width)/2)*cam.Scale
+ 		drawY := (pos.Y-cam.Y)*cam.Scale + halfH - (float64(sprite.Height)/2)*cam.Scale
+-		op.GeoM.Translate(drawX, drawY)
++		op.Translate(drawX, drawY)
+ 
+ 		screen.DrawImage(sprite.Image, op)
+ 		drawn++
+ 	}
+ 
+ 	if drawn == 0 {
+ 		fmt.Println("[RENDER] ⚠️ No sprites drawn this frame")
+ 	} else {
+ 		fmt.Printf("[RENDER] ✅ Drew %d entities\n", drawn)
+ 	}
+ }
+-
 diff --git a/engine/systems/scene/system.go b/engine/systems/scene/system.go
-index 274d72c362966a87f1959d5f67b6f45fabf40e68..ee2728fd418417c8208581a9f1af54492948eb06 100644
+index 274d72c362966a87f1959d5f67b6f45fabf40e68..5518200f7223d78a4995181a10f196e3eda9d28f 100644
 --- a/engine/systems/scene/system.go
 +++ b/engine/systems/scene/system.go
-@@ -29,39 +29,43 @@ func (m *Manager) Update(w *ecs.World) {
+@@ -1,67 +1,71 @@
+ package scene
+ 
+ import (
+ 	"fmt"
+ 
+-	"github.com/hajimehoshi/ebiten/v2"
+ 	"rp-go/engine/ecs"
+ 	"rp-go/engine/events"
++	"rp-go/engine/platform"
+ )
+ 
+ type Manager struct {
+ 	current ecs.Scene
+ 	next    ecs.Scene
+ 	init    bool
+ }
+ 
+ func (m *Manager) Update(w *ecs.World) {
+ 	// Subscribe once to SceneChangeEvent
+ 	if !m.init {
+ 		m.init = true
+ 		if bus, ok := w.EventBus.(*events.TypedBus); ok && bus != nil {
+ 			events.Subscribe(bus, func(e events.SceneChangeEvent) {
+ 				fmt.Printf("[SCENE] Switching from %s → %s\n", m.currentName(), e.Target)
+ 				if scn, ok := e.Scene.(ecs.Scene); ok {
+ 					m.QueueScene(scn)
+ 				}
+ 			})
+ 		}
  	}
  
  	// Scene transition
@@ -671,7 +1786,8 @@ index 274d72c362966a87f1959d5f67b6f45fabf40e68..ee2728fd418417c8208581a9f1af5449
  	}
  }
  
- func (m *Manager) Draw(w *ecs.World, screen *ebiten.Image) {
+-func (m *Manager) Draw(w *ecs.World, screen *ebiten.Image) {
++func (m *Manager) Draw(w *ecs.World, screen *platform.Image) {
  	if m.current != nil {
  		m.current.Draw(w, screen)
  	}

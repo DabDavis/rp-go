@@ -3,9 +3,9 @@ package scene
 import (
 	"fmt"
 
-	"github.com/hajimehoshi/ebiten/v2"
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
+	"rp-go/engine/platform"
 )
 
 type Manager struct {
@@ -44,7 +44,7 @@ func (m *Manager) Update(w *ecs.World) {
 	}
 }
 
-func (m *Manager) Draw(w *ecs.World, screen *ebiten.Image) {
+func (m *Manager) Draw(w *ecs.World, screen *platform.Image) {
 	if m.current != nil {
 		m.current.Draw(w, screen)
 	}

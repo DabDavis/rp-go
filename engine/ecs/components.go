@@ -1,6 +1,6 @@
 package ecs
 
-import "github.com/hajimehoshi/ebiten/v2"
+import "rp-go/engine/platform"
 
 type Position struct{ X, Y float64 }
 
@@ -11,7 +11,19 @@ type Velocity struct{ VX, VY float64 }
 func (v *Velocity) Name() string { return "Velocity" }
 
 type Sprite struct {
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 	Image    *ebiten.Image
+=======
+	Image    *platform.Image
+>>>>>>> theirs
+=======
+	Image    *platform.Image
+>>>>>>> theirs
+=======
+	Image    *platform.Image
+>>>>>>> theirs
 	Width    int
 	Height   int
 	Rotation float64

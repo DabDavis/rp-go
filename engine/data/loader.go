@@ -1,9 +1,13 @@
 package data
 
 import (
+	_ "embed"
 	"encoding/json"
 	"os"
 )
+
+//go:embed render_config.json
+var embeddedRenderConfig []byte
 
 type RenderConfig struct {
 	Window struct {
@@ -37,7 +41,7 @@ type RenderConfig struct {
 func LoadRenderConfig(path string) RenderConfig {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		panic(err)
+		data = embeddedRenderConfig
 	}
 	var cfg RenderConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {

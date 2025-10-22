@@ -3,11 +3,29 @@ package camera
 import (
 	"math"
 
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
+=======
+	"rp-go/engine/ecs"
+	"rp-go/engine/events"
+	"rp-go/engine/platform"
+>>>>>>> theirs
+=======
+	"rp-go/engine/ecs"
+	"rp-go/engine/events"
+	"rp-go/engine/platform"
+>>>>>>> theirs
+=======
+	"rp-go/engine/ecs"
+	"rp-go/engine/events"
+	"rp-go/engine/platform"
+>>>>>>> theirs
 )
 
 // Config controls runtime camera zoom limits and responsiveness.
@@ -100,6 +118,9 @@ func (s *System) Update(w *ecs.World) {
 
 	// Handle zoom input (keyboard + mouse wheel).
 	zoomDelta := 0.0
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyKPSubtract) {
 		zoomDelta -= s.cfg.ZoomStep
 	}
@@ -122,6 +143,30 @@ func (s *System) Update(w *ecs.World) {
 	if wheelY != 0 {
 		zoomDelta += wheelY * s.cfg.ZoomStep
 >>>>>>> theirs
+=======
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+	if platform.IsKeyJustPressed(platform.KeyMinus) || platform.IsKeyJustPressed(platform.KeyKPSubtract) {
+		zoomDelta -= s.cfg.ZoomStep
+	}
+	if platform.IsKeyJustPressed(platform.KeyEqual) || platform.IsKeyJustPressed(platform.KeyKPAdd) {
+		zoomDelta += s.cfg.ZoomStep
+	}
+	if platform.IsKeyJustPressed(platform.Key0) || platform.IsKeyJustPressed(platform.KeyKP0) {
+		cam.TargetScale = clamp(cam.DefaultScale, cam.MinScale, cam.MaxScale)
+	}
+	_, wheelY := platform.Wheel()
+	if wheelY != 0 {
+		zoomDelta += wheelY * s.cfg.ZoomStep
+<<<<<<< ours
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 	}
 	if zoomDelta != 0 {
 		cam.TargetScale = clamp(cam.TargetScale+zoomDelta, cam.MinScale, cam.MaxScale)
@@ -143,10 +188,10 @@ func (s *System) Update(w *ecs.World) {
 
 	// Manual rotation (Q / E)
 	const rotSpeed = 0.03
-	if ebiten.IsKeyPressed(ebiten.KeyQ) {
+	if platform.IsKeyPressed(platform.KeyQ) {
 		cam.Rotation -= rotSpeed
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyE) {
+	if platform.IsKeyPressed(platform.KeyE) {
 		cam.Rotation += rotSpeed
 	}
 
@@ -163,7 +208,7 @@ func (s *System) Update(w *ecs.World) {
 	}
 }
 
-func (s *System) Draw(*ecs.World, *ebiten.Image) {}
+func (s *System) Draw(*ecs.World, *platform.Image) {}
 
 func clamp(v, min, max float64) float64 {
 	if v < min {

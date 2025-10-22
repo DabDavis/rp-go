@@ -7,12 +7,24 @@ import (
 	"os"
 	"sync"
 
-	"github.com/hajimehoshi/ebiten/v2"
+	"rp-go/engine/platform"
 )
 
 type cachedImage struct {
 	once sync.Once
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 	img  *ebiten.Image
+=======
+	img  *platform.Image
+>>>>>>> theirs
+=======
+	img  *platform.Image
+>>>>>>> theirs
+=======
+	img  *platform.Image
+>>>>>>> theirs
 	err  error
 }
 
@@ -20,7 +32,19 @@ var imageCache sync.Map // map[string]*cachedImage
 
 // LoadImage returns an Ebiten image, caching decoded results so repeated
 // requests (even across goroutines) reuse the same GPU resource.
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 func LoadImage(path string) *ebiten.Image {
+=======
+func LoadImage(path string) *platform.Image {
+>>>>>>> theirs
+=======
+func LoadImage(path string) *platform.Image {
+>>>>>>> theirs
+=======
+func LoadImage(path string) *platform.Image {
+>>>>>>> theirs
 	entryAny, _ := imageCache.LoadOrStore(path, &cachedImage{})
 	entry := entryAny.(*cachedImage)
 
@@ -52,7 +76,19 @@ func PreloadImages(paths ...string) {
 	wg.Wait()
 }
 
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 func decodeImage(path string) (*ebiten.Image, error) {
+=======
+func decodeImage(path string) (*platform.Image, error) {
+>>>>>>> theirs
+=======
+func decodeImage(path string) (*platform.Image, error) {
+>>>>>>> theirs
+=======
+func decodeImage(path string) (*platform.Image, error) {
+>>>>>>> theirs
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -64,5 +100,17 @@ func decodeImage(path string) (*ebiten.Image, error) {
 		return nil, err
 	}
 
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 	return ebiten.NewImageFromImage(img), nil
+=======
+	return platform.NewImageFromImage(img), nil
+>>>>>>> theirs
+=======
+	return platform.NewImageFromImage(img), nil
+>>>>>>> theirs
+=======
+	return platform.NewImageFromImage(img), nil
+>>>>>>> theirs
 }

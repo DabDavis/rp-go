@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/hajimehoshi/ebiten/v2"
 	"rp-go/engine/ecs"
+	"rp-go/engine/platform"
 )
 
 type System struct{}
 
 func (s *System) Update(*ecs.World) {}
 
-func (s *System) Draw(w *ecs.World, screen *ebiten.Image) {
+func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	var cam *ecs.Camera
 	for _, e := range w.Entities {
 		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
@@ -25,8 +25,9 @@ func (s *System) Draw(w *ecs.World, screen *ebiten.Image) {
 		return
 	}
 
-	sw := float64(screen.Bounds().Dx())
-	sh := float64(screen.Bounds().Dy())
+	bounds := screen.Bounds()
+	sw := float64(bounds.Dx())
+	sh := float64(bounds.Dy())
 	halfW := sw / 2
 	halfH := sh / 2
 
@@ -38,17 +39,17 @@ func (s *System) Draw(w *ecs.World, screen *ebiten.Image) {
 			continue
 		}
 
-		op := &ebiten.DrawImageOptions{}
-		op.Filter = ebiten.FilterNearest
+		op := platform.NewDrawImageOptions()
+		op.SetFilter(platform.FilterNearest)
 
 		entityScale := float64(sprite.Width) / float64(sprite.Image.Bounds().Dx())
 		totalScale := math.Max(0.01, cam.Scale*entityScale)
-		op.GeoM.Scale(totalScale, totalScale)
-		op.GeoM.Rotate(sprite.Rotation + cam.Rotation)
+		op.Scale(totalScale, totalScale)
+		op.Rotate(sprite.Rotation + cam.Rotation)
 
 		drawX := (pos.X-cam.X)*cam.Scale + halfW - (float64(sprite.Width)/2)*cam.Scale
 		drawY := (pos.Y-cam.Y)*cam.Scale + halfH - (float64(sprite.Height)/2)*cam.Scale
-		op.GeoM.Translate(drawX, drawY)
+		op.Translate(drawX, drawY)
 
 		screen.DrawImage(sprite.Image, op)
 		drawn++
@@ -60,4 +61,3 @@ func (s *System) Draw(w *ecs.World, screen *ebiten.Image) {
 		fmt.Printf("[RENDER] ✅ Drew %d entities\n", drawn)
 	}
 }
-
