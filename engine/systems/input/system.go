@@ -1,8 +1,6 @@
 package input
 
 import (
-	"math"
-
 	"rp-go/engine/ecs"
 	"rp-go/engine/platform"
 )
@@ -16,7 +14,9 @@ func (s *System) Update(w *ecs.World) {
 			continue
 		}
 		sprite, hasSprite := e.Get("Sprite").(*ecs.Sprite)
+
 		v.VX, v.VY = 0, 0
+
 		if platform.IsKeyPressed(platform.KeyArrowLeft) || platform.IsKeyPressed(platform.KeyA) {
 			v.VX = -2
 		}
@@ -41,3 +41,4 @@ func (s *System) Update(w *ecs.World) {
 }
 
 func (s *System) Draw(*ecs.World, *platform.Image) {}
+

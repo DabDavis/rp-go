@@ -44,12 +44,11 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		op.SetFilter(platform.FilterNearest)
 
 		imgBounds := sprite.Image.Bounds()
-		originX := float64(imgBounds.Dx()) / 2
-		originY := float64(imgBounds.Dy()) / 2
 		entityScale := float64(sprite.Width) / float64(imgBounds.Dx())
 		totalScale := math.Max(0.01, cam.Scale*entityScale)
 		scaleX := totalScale
 		flipOffset := 0.0
+
 		if sprite.FlipHorizontal {
 			scaleX = -totalScale
 			flipOffset = float64(sprite.Width) * cam.Scale
@@ -72,3 +71,4 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		fmt.Printf("[RENDER] ✅ Drew %d entities\n", drawn)
 	}
 }
+
