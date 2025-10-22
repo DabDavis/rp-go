@@ -40,6 +40,8 @@ func (g *Game) Draw(screen *platform.Image) {
 	}
 
 	// Composite offscreen to window, applying zoom & rotation
+
+	// ✅ Composite offscreen to window, applying zoom & rotation
 	op := platform.NewDrawImageOptions()
 	op.SetFilter(platform.FilterNearest)
 
@@ -85,6 +87,18 @@ func main() {
 			*frames = v
 		}
 	}
+
+	if *headless {
+		if err := platform.RunHeadless(game, *frames, cfg.Viewport.Width, cfg.Viewport.Height); err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Headless run complete (%d frames)\n", *frames)
+		return
+	}
+
+	platform.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
+	platform.SetWindowTitle("rp-go: ECS Camera Prototype")
+
 
 	if *headless {
 		if err := platform.RunHeadless(game, *frames, cfg.Viewport.Width, cfg.Viewport.Height); err != nil {

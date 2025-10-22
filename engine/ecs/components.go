@@ -12,6 +12,10 @@ func (v *Velocity) Name() string { return "Velocity" }
 
 type Sprite struct {
 	Texture  *platform.Image
+	Image    *platform.Image
+
+	Image    *platform.Image
+	Image    *platform.Image
 	Width    int
 	Height   int
 	Rotation float64

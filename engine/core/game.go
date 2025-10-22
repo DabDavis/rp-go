@@ -5,6 +5,11 @@ import (
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
 	"rp-go/engine/platform"
+
+	"rp-go/engine/platform"
+
+	"rp-go/engine/platform"
+	"rp-go/engine/platform"
 	"rp-go/engine/scenes/space"
 	"rp-go/engine/systems/camera"
 	"rp-go/engine/systems/debug"
@@ -28,6 +33,7 @@ func NewGameWorld() *GameWorld {
 	w.EventBus = events.NewBus()
 
 	// Scene manager FIRST - it creates entities (ship, camera, planet)
+	// ✅ Scene manager FIRST — it creates entities (ship, camera, planet)
 	sm := &scene.Manager{}
 	w.AddSystem(sm)
 
@@ -56,4 +62,13 @@ func (g *GameWorld) Update() {
 		bus.Flush()
 	}
 }
+
+	if bus, ok := g.World.EventBus.(*events.TypedBus); ok && bus != nil {
+		bus.Flush()
+	}
+}
+func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
+
+func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
+
 func (g *GameWorld) Draw(screen *platform.Image) { g.World.Draw(screen) }
