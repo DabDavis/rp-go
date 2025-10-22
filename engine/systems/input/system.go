@@ -34,12 +34,6 @@ func (s *System) Update(w *ecs.World) {
 			} else if v.VX > 0 {
 				sprite.FlipHorizontal = false
 			}
-
-			if v.VY < 0 {
-				sprite.FlipVertical = true
-			} else if v.VY > 0 {
-				sprite.FlipVertical = false
-			}
 		}
 	}
 }

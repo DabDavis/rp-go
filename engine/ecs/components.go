@@ -20,7 +20,6 @@ type Sprite struct {
 	Height         int
 	Rotation       float64
 	FlipHorizontal bool
-	FlipVertical   bool
 }
 
 func (s *Sprite) Name() string { return "Sprite" }

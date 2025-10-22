@@ -46,24 +46,18 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		entityScale := float64(sprite.Width) / float64(sprite.Image.Bounds().Dx())
 		totalScale := math.Max(0.01, cam.Scale*entityScale)
 		scaleX := totalScale
-		scaleY := totalScale
-		flipOffsetX := 0.0
-		flipOffsetY := 0.0
+		flipOffset := 0.0
 		if sprite.FlipHorizontal {
 			scaleX = -totalScale
-			flipOffsetX = float64(sprite.Width) * cam.Scale
-		}
-		if sprite.FlipVertical {
-			scaleY = -totalScale
-			flipOffsetY = float64(sprite.Height) * cam.Scale
+			flipOffset = float64(sprite.Width) * cam.Scale
 		}
 
-		op.Scale(scaleX, scaleY)
+		op.Scale(scaleX, totalScale)
 		op.Rotate(sprite.Rotation)
 
 		drawX := (pos.X-cam.X)*cam.Scale + halfW - (float64(sprite.Width)/2)*cam.Scale
 		drawY := (pos.Y-cam.Y)*cam.Scale + halfH - (float64(sprite.Height)/2)*cam.Scale
-		op.Translate(drawX+flipOffsetX, drawY+flipOffsetY)
+		op.Translate(drawX+flipOffset, drawY)
 
 		screen.DrawImage(sprite.Image, op)
 		drawn++
