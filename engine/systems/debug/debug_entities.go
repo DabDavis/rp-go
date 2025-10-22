@@ -16,7 +16,7 @@ func DrawEntityDiagnostics(w *ecs.World, screen *platform.Image, frame int) {
 	for _, e := range w.Entities {
 		pos, ok1 := e.Get("Position").(*ecs.Position)
 		sprite, ok2 := e.Get("Sprite").(*ecs.Sprite)
-		if !ok1 || !ok2 || sprite.Image == nil {
+		if !ok1 || !ok2 || sprite.Texture == nil {
 			continue
 		}
 
@@ -37,4 +37,3 @@ func DrawEntityDiagnostics(w *ecs.World, screen *platform.Image, frame int) {
 		}
 	}
 }
-

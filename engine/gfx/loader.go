@@ -72,4 +72,3 @@ func decodeImage(path string) (*platform.Image, error) {
 
 	return platform.NewImageFromImage(img), nil
 }
-

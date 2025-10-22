@@ -57,3 +57,5 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	platform.DrawText(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
 }
 
+	return builder.String()
+}

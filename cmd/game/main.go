@@ -36,7 +36,26 @@ func (g *Game) Draw(screen *platform.Image) {
 
 	if cam == nil {
 		screen.DrawImage(g.offscreen, nil)
-		return
+	} else {
+		// Composite offscreen to window, applying zoom & rotation
+		op := platform.NewDrawImageOptions()
+		op.SetFilter(platform.FilterNearest)
+
+		// Apply camera scale and rotation
+		op.Scale(cam.Scale, cam.Scale)
+		op.Rotate(cam.Rotation) // rotation placeholder (0 by default)
+
+		// Center on screen
+		windowW := float64(cfg.Window.Width)
+		windowH := float64(cfg.Window.Height)
+		offW := float64(cfg.Viewport.Width)
+		offH := float64(cfg.Viewport.Height)
+		op.Translate(
+			windowW/2-offW*cam.Scale/2,
+			windowH/2-offH*cam.Scale/2,
+		)
+
+		screen.DrawImage(g.offscreen, op)
 	}
 
 	// Composite offscreen to window, applying zoom & rotation

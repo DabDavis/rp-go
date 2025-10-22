@@ -46,4 +46,3 @@ func DrawCameraInfo(w *ecs.World, screen *platform.Image) {
 
 	platform.DrawText(screen, msg, basicfont.Face7x13, 10, 20, color.White)
 }
-

@@ -51,3 +51,4 @@ type Actor struct {
 
 func (a *Actor) Name() string { return "Actor" }
 
+func (a *Actor) Name() string { return "Actor" }
