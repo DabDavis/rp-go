@@ -7,8 +7,22 @@ type System interface {
 	Draw(world *World, screen *platform.Image)
 }
 
-// Optional extension for ordering systems later
+// Optional: control execution order and render layer
 type PrioritizedSystem interface {
 	System
 	Priority() int
 }
+
+// Optional: indicate whether the system should draw in world or overlay layer
+type LayeredSystem interface {
+	System
+	Layer() DrawLayer
+}
+
+type DrawLayer int
+
+const (
+	LayerWorld DrawLayer = iota // affected by camera transforms
+	LayerOverlay                 // drawn directly to final screen (HUD, debug)
+)
+

@@ -1,7 +1,6 @@
 package render
 
 import (
-	"fmt"
 	"math"
 
 	"rp-go/engine/ecs"
@@ -9,6 +8,9 @@ import (
 )
 
 type System struct{}
+
+// Ensure this system only runs in the world pass
+func (s *System) Layer() ecs.DrawLayer { return ecs.LayerWorld }
 
 func (s *System) Update(*ecs.World) {}
 
@@ -22,7 +24,6 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		}
 	}
 	if cam == nil {
-		fmt.Println("[RENDER] ⚠ No camera found")
 		return
 	}
 
@@ -32,7 +33,6 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	halfW := sw / 2
 	halfH := sh / 2
 
-	drawn := 0
 	for _, e := range w.Entities {
 		pos, ok1 := e.Get("Position").(*ecs.Position)
 		sprite, ok2 := e.Get("Sprite").(*ecs.Sprite)
@@ -69,13 +69,6 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		op.Translate(drawX+halfW, drawY+halfH)
 
 		screen.DrawImage(sprite.Image, op)
-		drawn++
-	}
-
-	if drawn == 0 {
-		fmt.Println("[RENDER] ⚠ No sprites drawn this frame")
-	} else {
-		fmt.Printf("[RENDER] ✅ Drew %d entities\n", drawn)
 	}
 }
 

@@ -26,15 +26,14 @@ func NewGameWorld() *GameWorld {
 	cfg := data.LoadRenderConfig("engine/data/render_config.json")
 	w := ecs.NewWorld()
 
-	// Wire up the typed event bus so systems can coordinate without
-	// direct dependencies. It gets flushed at the end of every update.
+	// Wire up the typed event bus so systems can coordinate without direct dependencies.
 	w.EventBus = events.NewBus()
 
 	// Scene manager FIRST — it creates entities (ship, camera, planet)
 	sm := &scene.Manager{}
 	w.AddSystem(sm)
 
-	// Core systems follow in logical order
+	// Core systems in logical update order
 	w.AddSystem(&input.System{})
 	w.AddSystem(&movement.System{})
 	w.AddSystem(camera.NewSystem(camera.Config{
@@ -43,8 +42,8 @@ func NewGameWorld() *GameWorld {
 		ZoomStep: cfg.Viewport.ZoomStep,
 		ZoomLerp: cfg.Viewport.ZoomLerp,
 	}))
-	w.AddSystem(&render.System{})
-	w.AddSystem(&debug.System{})
+	w.AddSystem(&render.System{}) // Draws world-space entities
+	w.AddSystem(&debug.System{})  // Overlay (UI/debug info)
 
 	// Start in the space scene
 	sm.QueueScene(&space.Scene{})
@@ -60,8 +59,9 @@ func (g *GameWorld) Update() {
 	}
 }
 
-// Draw executes all registered Draw systems.
+// Draw executes only world-space (camera-affected) rendering systems.
+// Overlay systems (debug, HUD) are drawn in main.go after compositing.
 func (g *GameWorld) Draw(screen *platform.Image) {
-	g.World.Draw(screen)
+	g.World.DrawWorld(screen)
 }
 

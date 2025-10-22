@@ -30,8 +30,27 @@ func (w *World) Update() {
 	}
 }
 
-func (w *World) Draw(screen *platform.Image) {
+// DrawWorld: draws only LayerWorld systems (camera-affected)
+func (w *World) DrawWorld(screen *platform.Image) {
 	for _, s := range w.Systems {
+		if ls, ok := s.(LayeredSystem); ok {
+			if ls.Layer() != LayerWorld {
+				continue
+			}
+		}
 		s.Draw(w, screen)
 	}
 }
+
+// DrawOverlay: draws only LayerOverlay systems (screen-space)
+func (w *World) DrawOverlay(screen *platform.Image) {
+	for _, s := range w.Systems {
+		if ls, ok := s.(LayeredSystem); ok {
+			if ls.Layer() != LayerOverlay {
+				continue
+			}
+		}
+		s.Draw(w, screen)
+	}
+}
+

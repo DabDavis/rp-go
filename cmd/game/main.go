@@ -26,25 +26,28 @@ func (g *Game) Draw(screen *platform.Image) {
 	w := g.world.World
 	cam := getActiveCamera(w)
 
+	// Create offscreen buffer for world rendering
 	if g.offscreen == nil {
 		g.offscreen = platform.NewImage(cfg.Viewport.Width, cfg.Viewport.Height)
 	}
 
-	// Draw world into offscreen buffer (1:1 internal pixels)
+	/* ---------------------------------------------------------------------- */
+	/*                              WORLD PASS                                */
+	/* ---------------------------------------------------------------------- */
 	g.offscreen.Clear()
-	w.Draw(g.offscreen)
+	g.world.Draw(g.offscreen) // world.DrawWorld internally
 
-	if cam == nil {
-		screen.DrawImage(g.offscreen, nil)
-	} else {
-		// Composite offscreen to window, applying zoom & rotation
-		op := platform.NewDrawImageOptions()
-		op.SetFilter(platform.FilterNearest)
+	/* ---------------------------------------------------------------------- */
+	/*                            COMPOSITE TO SCREEN                         */
+	/* ---------------------------------------------------------------------- */
+	op := platform.NewDrawImageOptions()
+	op.SetFilter(platform.FilterNearest)
 
-		// Apply camera scale
+	if cam != nil {
+		// Apply camera zoom
 		op.Scale(cam.Scale, cam.Scale)
 
-		// Center on screen
+		// Center world on screen
 		windowW := float64(cfg.Window.Width)
 		windowH := float64(cfg.Window.Height)
 		offW := float64(cfg.Viewport.Width)
@@ -53,30 +56,15 @@ func (g *Game) Draw(screen *platform.Image) {
 			windowW/2-offW*cam.Scale/2,
 			windowH/2-offH*cam.Scale/2,
 		)
-
-		screen.DrawImage(g.offscreen, op)
 	}
 
-	// Composite offscreen to window, applying zoom & rotation
-
-	// ✅ Composite offscreen to window, applying zoom & rotation
-	op := platform.NewDrawImageOptions()
-	op.SetFilter(platform.FilterNearest)
-
-	// Apply camera scale
-	op.Scale(cam.Scale, cam.Scale)
-
-	// Center on screen
-	windowW := float64(cfg.Window.Width)
-	windowH := float64(cfg.Window.Height)
-	offW := float64(cfg.Viewport.Width)
-	offH := float64(cfg.Viewport.Height)
-	op.Translate(
-		windowW/2-offW*cam.Scale/2,
-		windowH/2-offH*cam.Scale/2,
-	)
-
 	screen.DrawImage(g.offscreen, op)
+
+	/* ---------------------------------------------------------------------- */
+	/*                              OVERLAY PASS                              */
+	/* ---------------------------------------------------------------------- */
+	// Draw screen-space systems (HUD, debug) directly to window
+	w.DrawOverlay(screen)
 }
 
 func (g *Game) Layout(outW, outH int) (int, int) {
@@ -87,13 +75,13 @@ func (g *Game) Layout(outW, outH int) (int, int) {
 func main() {
 	gameWorld := core.NewGameWorld()
 	cfg := gameWorld.Config
-
 	game := &Game{world: gameWorld}
 
 	headless := flag.Bool("headless", false, "run without opening a window")
 	frames := flag.Int("frames", 120, "number of frames to run in headless mode")
 	flag.Parse()
 
+	// Allow environment variables to override flags
 	if envHeadless := os.Getenv("RP_HEADLESS"); envHeadless != "" {
 		if v, err := strconv.ParseBool(envHeadless); err == nil {
 			*headless = v
@@ -105,6 +93,7 @@ func main() {
 		}
 	}
 
+	// Headless simulation mode
 	if *headless {
 		if err := platform.RunHeadless(game, *frames, cfg.Viewport.Width, cfg.Viewport.Height); err != nil {
 			log.Fatal(err)
@@ -113,17 +102,7 @@ func main() {
 		return
 	}
 
-	platform.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
-	platform.SetWindowTitle("rp-go: ECS Camera Prototype")
-
-	if *headless {
-		if err := platform.RunHeadless(game, *frames, cfg.Viewport.Width, cfg.Viewport.Height); err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("Headless run complete (%d frames)\n", *frames)
-		return
-	}
-
+	// Normal game mode
 	platform.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
 	platform.SetWindowTitle("rp-go: ECS Camera Prototype")
 
@@ -132,7 +111,7 @@ func main() {
 	}
 }
 
-// Utility: get first camera entity
+// Utility: get first active camera in the world
 func getActiveCamera(w *ecs.World) *ecs.Camera {
 	for _, e := range w.Entities {
 		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
@@ -141,3 +120,4 @@ func getActiveCamera(w *ecs.World) *ecs.Camera {
 	}
 	return nil
 }
+
