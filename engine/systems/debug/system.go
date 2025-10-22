@@ -48,7 +48,6 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 
 		builder.WriteString("\n")
 		builder.WriteString(fmt.Sprintf("Cam: (%.1f, %.1f)\n", cam.X, cam.Y))
-		builder.WriteString(fmt.Sprintf("Rotation: %.1f°\n", cam.Rotation*180/3.14159))
 		builder.WriteString(fmt.Sprintf("Scale: %.2f → %.2f\n", cam.Scale, targetScale))
 		builder.WriteString(fmt.Sprintf("Bounds: %.2f – %.2f\n", minScale, maxScale))
 		builder.WriteString(fmt.Sprintf("Default Scale: %.2f", defaultScale))
@@ -56,4 +55,3 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 
 	platform.DrawText(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
 }
-

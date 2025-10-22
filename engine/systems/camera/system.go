@@ -47,7 +47,6 @@ func NewSystem(cfg Config) *System {
 func (s *System) Update(w *ecs.World) {
 	var cam *ecs.Camera
 	var target *ecs.Position
-	var targetSprite *ecs.Sprite
 
 	for _, e := range w.Entities {
 		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
@@ -56,9 +55,6 @@ func (s *System) Update(w *ecs.World) {
 		if e.Has("CameraTarget") {
 			if pos, ok := e.Get("Position").(*ecs.Position); ok {
 				target = pos
-			}
-			if spr, ok := e.Get("Sprite").(*ecs.Sprite); ok {
-				targetSprite = spr
 			}
 		}
 	}
@@ -131,26 +127,7 @@ func (s *System) Update(w *ecs.World) {
 		}
 	}
 
-	// Manual rotation (Q / E)
-	const rotSpeed = 0.03
-	if platform.IsKeyPressed(platform.KeyQ) {
-		cam.Rotation -= rotSpeed
-	}
-	if platform.IsKeyPressed(platform.KeyE) {
-		cam.Rotation += rotSpeed
-	}
-
-	// Sync player sprite rotation to camera
-	if targetSprite != nil {
-		targetSprite.Rotation = cam.Rotation
-	}
-
-	// Normalize rotation
-	if cam.Rotation > math.Pi*2 {
-		cam.Rotation -= math.Pi * 2
-	} else if cam.Rotation < 0 {
-		cam.Rotation += math.Pi * 2
-	}
+	cam.Rotation = 0
 }
 
 func (s *System) Draw(*ecs.World, *platform.Image) {}
@@ -164,4 +141,3 @@ func clamp(v, min, max float64) float64 {
 	}
 	return v
 }
-

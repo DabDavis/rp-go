@@ -50,4 +50,3 @@ type Actor struct {
 }
 
 func (a *Actor) Name() string { return "Actor" }
-
