@@ -355,7 +355,7 @@ index 99cb0fa82af3138abd0972081ab11cd5d61b63f3..a410939deb2ba648b2f876cec42d9a8e
  }
 -
 diff --git a/engine/systems/camera/system.go b/engine/systems/camera/system.go
-index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..b4b725a97b8d3d943528ed2a05ea86aa7a748c16 100644
+index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..a8d865dc6372290d05513e89a43ee2b370fd8eaf 100644
 --- a/engine/systems/camera/system.go
 +++ b/engine/systems/camera/system.go
 @@ -1,62 +1,165 @@
@@ -471,8 +471,8 @@ index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..b4b725a97b8d3d943528ed2a05ea86aa
 +	if inpututil.IsKeyJustPressed(ebiten.Key0) || inpututil.IsKeyJustPressed(ebiten.KeyKP0) {
 +		cam.TargetScale = clamp(cam.DefaultScale, cam.MinScale, cam.MaxScale)
 +	}
-+	if wheel := ebiten.Wheel(); wheel.Y != 0 {
-+		zoomDelta += wheel.Y * s.cfg.ZoomStep
++	if _, wheelY := ebiten.Wheel(); wheelY != 0 {
++		zoomDelta += wheelY * s.cfg.ZoomStep
 +	}
 +	if zoomDelta != 0 {
 +		cam.TargetScale = clamp(cam.TargetScale+zoomDelta, cam.MinScale, cam.MaxScale)
@@ -580,6 +580,73 @@ index e27d8f769c36eff4a04330f87a12e6762140a61a..9198207eab35cab57b43352d14061dfb
  	text.Draw(screen, msg, basicfont.Face7x13, 10, 20, color.White)
  }
 -
+diff --git a/engine/systems/debug/system.go b/engine/systems/debug/system.go
+index 53fd2a3d648b8177e8c94e80f979647351ae8f5b..181f033e2ce56920f07124b5c112a819b0c1e584 100644
+--- a/engine/systems/debug/system.go
++++ b/engine/systems/debug/system.go
+@@ -1,33 +1,57 @@
+ package debug
+ 
+ import (
+ 	"fmt"
+ 	"image/color"
++	"strings"
+ 
+ 	"github.com/hajimehoshi/ebiten/v2"
+ 	"github.com/hajimehoshi/ebiten/v2/text"
+ 	"golang.org/x/image/font/basicfont"
+ 	"rp-go/engine/ecs"
+ )
+ 
+ type System struct{}
+ 
+ func (s *System) Update(*ecs.World) {}
+ 
+ func (s *System) Draw(w *ecs.World, screen *ebiten.Image) {
+ 	var cam *ecs.Camera
+ 	for _, e := range w.Entities {
+ 		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
+ 			cam = c
+ 			break
+ 		}
+ 	}
+ 
+-	msg := fmt.Sprintf("FPS: %.0f\nEntities: %d", ebiten.ActualFPS(), len(w.Entities))
++	var builder strings.Builder
++	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", ebiten.ActualFPS(), len(w.Entities)))
++
+ 	if cam != nil {
+-		msg += fmt.Sprintf("\nCam(%.1f, %.1f) Scale %.2f Rot %.1f°",
+-			cam.X, cam.Y, cam.Scale, cam.Rotation*180/3.14159)
++		targetScale := cam.TargetScale
++		if targetScale <= 0 {
++			targetScale = cam.Scale
++		}
++		minScale := cam.MinScale
++		if minScale <= 0 {
++			minScale = cam.Scale
++		}
++		maxScale := cam.MaxScale
++		if maxScale <= 0 {
++			maxScale = cam.Scale
++		}
++		defaultScale := cam.DefaultScale
++		if defaultScale <= 0 {
++			defaultScale = cam.Scale
++		}
++
++		builder.WriteString("\n")
++		builder.WriteString(fmt.Sprintf("Cam: (%.1f, %.1f)\n", cam.X, cam.Y))
++		builder.WriteString(fmt.Sprintf("Rotation: %.1f°\n", cam.Rotation*180/3.14159))
++		builder.WriteString(fmt.Sprintf("Scale: %.2f → %.2f\n", cam.Scale, targetScale))
++		builder.WriteString(fmt.Sprintf("Bounds: %.2f – %.2f\n", minScale, maxScale))
++		builder.WriteString(fmt.Sprintf("Default Scale: %.2f", defaultScale))
+ 	}
+-	text.Draw(screen, msg, basicfont.Face7x13, 10, 20, color.White)
+-}
+ 
++	text.Draw(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
++}
 diff --git a/engine/systems/scene/system.go b/engine/systems/scene/system.go
 index 274d72c362966a87f1959d5f67b6f45fabf40e68..ee2728fd418417c8208581a9f1af54492948eb06 100644
 --- a/engine/systems/scene/system.go

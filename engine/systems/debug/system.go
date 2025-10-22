@@ -3,6 +3,7 @@ package debug
 import (
 	"fmt"
 	"image/color"
+	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text"
@@ -23,11 +24,34 @@ func (s *System) Draw(w *ecs.World, screen *ebiten.Image) {
 		}
 	}
 
-	msg := fmt.Sprintf("FPS: %.0f\nEntities: %d", ebiten.ActualFPS(), len(w.Entities))
-	if cam != nil {
-		msg += fmt.Sprintf("\nCam(%.1f, %.1f) Scale %.2f Rot %.1f°",
-			cam.X, cam.Y, cam.Scale, cam.Rotation*180/3.14159)
-	}
-	text.Draw(screen, msg, basicfont.Face7x13, 10, 20, color.White)
-}
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", ebiten.ActualFPS(), len(w.Entities)))
 
+	if cam != nil {
+		targetScale := cam.TargetScale
+		if targetScale <= 0 {
+			targetScale = cam.Scale
+		}
+		minScale := cam.MinScale
+		if minScale <= 0 {
+			minScale = cam.Scale
+		}
+		maxScale := cam.MaxScale
+		if maxScale <= 0 {
+			maxScale = cam.Scale
+		}
+		defaultScale := cam.DefaultScale
+		if defaultScale <= 0 {
+			defaultScale = cam.Scale
+		}
+
+		builder.WriteString("\n")
+		builder.WriteString(fmt.Sprintf("Cam: (%.1f, %.1f)\n", cam.X, cam.Y))
+		builder.WriteString(fmt.Sprintf("Rotation: %.1f°\n", cam.Rotation*180/3.14159))
+		builder.WriteString(fmt.Sprintf("Scale: %.2f → %.2f\n", cam.Scale, targetScale))
+		builder.WriteString(fmt.Sprintf("Bounds: %.2f – %.2f\n", minScale, maxScale))
+		builder.WriteString(fmt.Sprintf("Default Scale: %.2f", defaultScale))
+	}
+
+	text.Draw(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
+}
