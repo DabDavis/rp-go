@@ -7,11 +7,12 @@ import (
 	"rp-go/engine/platform"
 
 	"rp-go/engine/scenes/space"
+	"rp-go/engine/systems/ai"
+	"rp-go/engine/systems/background"
 	"rp-go/engine/systems/camera"
 	"rp-go/engine/systems/debug"
 	"rp-go/engine/systems/input"
 	"rp-go/engine/systems/movement"
-	"rp-go/engine/systems/background"
 	"rp-go/engine/systems/render"
 	"rp-go/engine/systems/scene"
 )
@@ -37,6 +38,7 @@ func NewGameWorld() *GameWorld {
 	// Core systems in logical update order
 	w.AddSystem(&background.System{}) // 🌌 Draws parallax stars
 	w.AddSystem(&input.System{})
+	w.AddSystem(ai.NewSystem())
 	w.AddSystem(&movement.System{})
 	w.AddSystem(camera.NewSystem(camera.Config{
 		MinScale: cfg.Viewport.MinScale,
@@ -66,4 +68,3 @@ func (g *GameWorld) Update() {
 func (g *GameWorld) Draw(screen *platform.Image) {
 	g.World.DrawWorld(screen)
 }
-
