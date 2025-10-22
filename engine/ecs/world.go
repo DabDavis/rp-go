@@ -1,16 +1,36 @@
 package ecs
 
-import "rp-go/engine/platform"
+import (
+	"sort"
+
+	"rp-go/engine/platform"
+)
 
 type World struct {
 	nextID   EntityID
 	Entities []*Entity
 	Systems  []System
 	EventBus any
+
+	systemEntries []systemEntry
+	layerBuckets  map[DrawLayer][]systemEntry
+	worldLayers   []DrawLayer
+	overlayLayers []DrawLayer
+	nextOrder     int
+}
+
+type systemEntry struct {
+	system   System
+	priority int
+	order    int
 }
 
 func NewWorld() *World {
-	return &World{}
+	return &World{
+		layerBuckets:  make(map[DrawLayer][]systemEntry),
+		worldLayers:   []DrawLayer{LayerBackground, LayerWorld, LayerForeground},
+		overlayLayers: []DrawLayer{LayerHUD, LayerDebug},
+	}
 }
 
 func (w *World) NewEntity() *Entity {
@@ -22,35 +42,124 @@ func (w *World) NewEntity() *Entity {
 
 func (w *World) AddSystem(s System) {
 	w.Systems = append(w.Systems, s)
+
+	entry := systemEntry{
+		system:   s,
+		priority: systemPriority(s),
+		order:    w.nextOrder,
+	}
+	w.nextOrder++
+
+	w.systemEntries = append(w.systemEntries, entry)
+	stableSort(w.systemEntries)
+
+	layer := resolveLayer(s)
+	w.ensureLayerRegistered(layer)
+	bucket := append(w.layerBuckets[layer], entry)
+	stableSort(bucket)
+	w.layerBuckets[layer] = bucket
 }
 
 func (w *World) Update() {
-	for _, s := range w.Systems {
-		s.Update(w)
+	for _, entry := range w.systemEntries {
+		entry.system.Update(w)
 	}
 }
 
-// DrawWorld: draws only LayerWorld systems (camera-affected)
+// DrawWorld renders all world-space layers (background → foreground).
 func (w *World) DrawWorld(screen *platform.Image) {
-	for _, s := range w.Systems {
-		if ls, ok := s.(LayeredSystem); ok {
-			if ls.Layer() != LayerWorld {
-				continue
-			}
-		}
-		s.Draw(w, screen)
-	}
+	w.drawLayerGroup(screen, w.worldLayers)
 }
 
-// DrawOverlay: draws only LayerOverlay systems (screen-space)
+// DrawOverlay renders all overlay layers (HUD → debug).
 func (w *World) DrawOverlay(screen *platform.Image) {
-	for _, s := range w.Systems {
-		if ls, ok := s.(LayeredSystem); ok {
-			if ls.Layer() != LayerOverlay {
-				continue
-			}
+	w.drawLayerGroup(screen, w.overlayLayers)
+}
+
+// DrawLayer renders every system registered for the supplied layer.
+func (w *World) DrawLayer(screen *platform.Image, layer DrawLayer) {
+	w.drawLayerGroup(screen, []DrawLayer{layer})
+}
+
+// DrawLayers renders each layer in sequence.
+func (w *World) DrawLayers(screen *platform.Image, layers ...DrawLayer) {
+	w.drawLayerGroup(screen, layers)
+}
+
+// SetWorldLayers overrides the draw order for world-space layers.
+func (w *World) SetWorldLayers(layers ...DrawLayer) {
+	w.worldLayers = uniqueLayers(layers)
+}
+
+// SetOverlayLayers overrides the draw order for overlay layers.
+func (w *World) SetOverlayLayers(layers ...DrawLayer) {
+	w.overlayLayers = uniqueLayers(layers)
+}
+
+func (w *World) drawLayerGroup(screen *platform.Image, layers []DrawLayer) {
+	for _, layer := range layers {
+		entries := w.layerBuckets[layer]
+		for _, entry := range entries {
+			entry.system.Draw(w, screen)
 		}
-		s.Draw(w, screen)
 	}
 }
 
+func (w *World) ensureLayerRegistered(layer DrawLayer) {
+	if _, exists := w.layerBuckets[layer]; !exists {
+		w.layerBuckets[layer] = nil
+
+		if isOverlayLayer(layer) {
+			w.overlayLayers = appendLayerIfMissing(w.overlayLayers, layer)
+		} else {
+			w.worldLayers = appendLayerIfMissing(w.worldLayers, layer)
+		}
+	}
+}
+
+func systemPriority(s System) int {
+	if ps, ok := s.(PrioritizedSystem); ok {
+		return ps.Priority()
+	}
+	return 0
+}
+
+func resolveLayer(s System) DrawLayer {
+	if ls, ok := s.(LayeredSystem); ok {
+		return ls.Layer()
+	}
+	return LayerWorld
+}
+
+func stableSort(entries []systemEntry) {
+	sort.SliceStable(entries, func(i, j int) bool {
+		if entries[i].priority == entries[j].priority {
+			return entries[i].order < entries[j].order
+		}
+		return entries[i].priority < entries[j].priority
+	})
+}
+
+func appendLayerIfMissing(layers []DrawLayer, layer DrawLayer) []DrawLayer {
+	for _, existing := range layers {
+		if existing == layer {
+			return layers
+		}
+	}
+	return append(layers, layer)
+}
+
+func uniqueLayers(layers []DrawLayer) []DrawLayer {
+	if len(layers) == 0 {
+		return nil
+	}
+	out := make([]DrawLayer, 0, len(layers))
+	for _, layer := range layers {
+		out = appendLayerIfMissing(out, layer)
+	}
+	return out
+}
+
+func isOverlayLayer(layer DrawLayer) bool {
+	return layer >= LayerHUD
+}
