@@ -122,6 +122,7 @@ func (s *System) Update(w *ecs.World) {
 	_, wheelY := platform.Wheel()
 	if wheelY != 0 {
 		zoomDelta += wheelY * s.cfg.ZoomStep
+	}
   }
 	if zoomDelta != 0 {
 		cam.TargetScale = clamp(cam.TargetScale+zoomDelta, cam.MinScale, cam.MaxScale)

@@ -15,12 +15,12 @@ func DrawEntityDiagnostics(w *ecs.World, screen *platform.Image, frame int) {
 	for _, e := range w.Entities {
 		pos, ok1 := e.Get("Position").(*ecs.Position)
 		sprite, ok2 := e.Get("Sprite").(*ecs.Sprite)
-		if !ok1 || !ok2 || sprite.Image == nil {
+		if !ok1 || !ok2 || sprite.Texture == nil {
 			continue
 		}
 
-		imgW := float64(sprite.Image.Bounds().Dx())
-		imgH := float64(sprite.Image.Bounds().Dy())
+		imgW := float64(sprite.Texture.Bounds().Dx())
+		imgH := float64(sprite.Texture.Bounds().Dy())
 		playerScale := float64(sprite.Width) / imgW
 		totalScale := playerScale // (cam.Scale handled in render system)
 

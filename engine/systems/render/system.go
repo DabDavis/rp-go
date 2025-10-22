@@ -35,14 +35,14 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	for _, e := range w.Entities {
 		pos, ok1 := e.Get("Position").(*ecs.Position)
 		sprite, ok2 := e.Get("Sprite").(*ecs.Sprite)
-		if !ok1 || !ok2 || sprite.Image == nil {
+		if !ok1 || !ok2 || sprite.Texture == nil {
 			continue
 		}
 
 		op := platform.NewDrawImageOptions()
 		op.SetFilter(platform.FilterNearest)
 
-		entityScale := float64(sprite.Width) / float64(sprite.Image.Bounds().Dx())
+		entityScale := float64(sprite.Width) / float64(sprite.Texture.Bounds().Dx())
 		totalScale := math.Max(0.01, cam.Scale*entityScale)
 		op.Scale(totalScale, totalScale)
 		op.Rotate(sprite.Rotation + cam.Rotation)
@@ -51,7 +51,7 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		drawY := (pos.Y-cam.Y)*cam.Scale + halfH - (float64(sprite.Height)/2)*cam.Scale
 		op.Translate(drawX, drawY)
 
-		screen.DrawImage(sprite.Image, op)
+		screen.DrawImage(sprite.Texture, op)
 		drawn++
 	}
 

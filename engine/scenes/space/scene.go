@@ -39,7 +39,7 @@ func (s *Scene) Init(w *ecs.World) {
 	ship.Add(&ecs.CameraTarget{})
 
 	shipImg := gfx.LoadImage("assets/entities/ship.png")
-	ship.Add(&ecs.Sprite{Image: shipImg, Width: 64, Height: 64})
+	ship.Add(&ecs.Sprite{Texture: shipImg, Width: 64, Height: 64})
 
 	// === Camera ===
 	cam := w.NewEntity()
@@ -51,6 +51,7 @@ func (s *Scene) Init(w *ecs.World) {
 	planet := w.NewEntity()
 	planet.Add(&ecs.Position{X: 350, Y: 180})
 	planetImg := gfx.LoadImage("assets/entities/planet.png")
+	planet.Add(&ecs.Sprite{Texture: planetImg, Width: 128, Height: 128})
 	planet.Add(&ecs.Sprite{Image: planetImg, Width: 128, Height: 128})
 	fmt.Printf("[SCENE] Planet entity created (ID %d)\n", planet.ID)
 }
@@ -58,6 +59,7 @@ func (s *Scene) Init(w *ecs.World) {
 func (s *Scene) Update(w *ecs.World) {}
 
 func (s *Scene) Draw(w *ecs.World, screen *platform.Image) {
+	// Proper background fill
 	// ✅ Proper background fill
 	screen.Fill(color.RGBA{0, 0, 32, 255})
 }

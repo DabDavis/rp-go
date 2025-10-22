@@ -99,6 +99,18 @@ func main() {
 	platform.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
 	platform.SetWindowTitle("rp-go: ECS Camera Prototype")
 
+
+	if *headless {
+		if err := platform.RunHeadless(game, *frames, cfg.Viewport.Width, cfg.Viewport.Height); err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Headless run complete (%d frames)\n", *frames)
+		return
+	}
+
+	platform.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
+	platform.SetWindowTitle("rp-go: ECS Camera Prototype")
+
 	if err := platform.RunGame(game); err != nil {
 		log.Fatal(err)
 	}

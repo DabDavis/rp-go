@@ -32,6 +32,7 @@ func NewGameWorld() *GameWorld {
 	// direct dependencies. It gets flushed at the end of every update.
 	w.EventBus = events.NewBus()
 
+	// Scene manager FIRST - it creates entities (ship, camera, planet)
 	// ✅ Scene manager FIRST — it creates entities (ship, camera, planet)
 	sm := &scene.Manager{}
 	w.AddSystem(sm)
@@ -56,6 +57,11 @@ func NewGameWorld() *GameWorld {
 
 func (g *GameWorld) Update() {
 	g.World.Update()
+
+	if bus, ok := g.World.EventBus.(*events.TypedBus); ok && bus != nil {
+		bus.Flush()
+	}
+}
 
 	if bus, ok := g.World.EventBus.(*events.TypedBus); ok && bus != nil {
 		bus.Flush()
