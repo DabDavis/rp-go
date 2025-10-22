@@ -73,15 +73,6 @@ func (c *ActorCreator) Spawn(w *ecs.World, template string, position ecs.Positio
 		entity.Add(&ecs.Velocity{VX: tpl.Velocity.VX, VY: tpl.Velocity.VY})
 	}
 
-	if tpl.AI != nil {
-		if ai := buildAIComponent(tpl.AI); ai != nil {
-			entity.Add(ai)
-			if _, hasVelocity := entity.Get("Velocity").(*ecs.Velocity); !hasVelocity {
-				entity.Add(&ecs.Velocity{})
-			}
-		}
-	}
-
 	if tpl.Sprite.Image != "" {
 		spriteImage := gfx.LoadImage(tpl.Sprite.Image)
 		sprite := &ecs.Sprite{
@@ -125,75 +116,4 @@ func (c *ActorCreator) Templates() []string {
 		names = append(names, name)
 	}
 	return names
-}
-
-func buildAIComponent(tpl *data.ActorAITemplate) *ecs.AIController {
-	if tpl == nil {
-		return nil
-	}
-
-	ai := &ecs.AIController{Speed: tpl.Speed}
-
-	if tpl.Follow != nil && tpl.Follow.Target != "" {
-		ai.Follow = &ecs.AIFollowBehavior{
-			Target:      tpl.Follow.Target,
-			OffsetX:     tpl.Follow.OffsetX,
-			OffsetY:     tpl.Follow.OffsetY,
-			MinDistance: tpl.Follow.MinDistance,
-			MaxDistance: tpl.Follow.MaxDistance,
-			Speed:       tpl.Follow.Speed,
-		}
-	}
-
-	if tpl.Pursue != nil && tpl.Pursue.Target != "" {
-		ai.Pursue = &ecs.AIPursueBehavior{
-			Target:         tpl.Pursue.Target,
-			EngageDistance: tpl.Pursue.EngageDistance,
-			Speed:          tpl.Pursue.Speed,
-		}
-	}
-
-	if tpl.Retreat != nil && tpl.Retreat.Target != "" {
-		ai.Retreat = &ecs.AIRetreatBehavior{
-			Target:          tpl.Retreat.Target,
-			TriggerDistance: tpl.Retreat.TriggerDistance,
-			SafeDistance:    tpl.Retreat.SafeDistance,
-			Speed:           tpl.Retreat.Speed,
-		}
-	}
-
-	if tpl.Patrol != nil && len(tpl.Patrol.Waypoints) > 0 {
-		ai.Patrol = &ecs.AIPathBehavior{
-			Variant:   tpl.Patrol.Variant,
-			Waypoints: copyWaypoints(tpl.Patrol.Waypoints),
-			Speed:     tpl.Patrol.Speed,
-		}
-		ai.PatrolState.Reset()
-	}
-
-	if tpl.Travel != nil && len(tpl.Travel.Waypoints) > 0 {
-		ai.Travel = &ecs.AIPathBehavior{
-			Variant:   tpl.Travel.Variant,
-			Waypoints: copyWaypoints(tpl.Travel.Waypoints),
-			Speed:     tpl.Travel.Speed,
-		}
-		ai.TravelState.Reset()
-	}
-
-	if ai.Follow == nil && ai.Pursue == nil && ai.Patrol == nil && ai.Retreat == nil && ai.Travel == nil {
-		return nil
-	}
-
-	return ai
-}
-
-func copyWaypoints(points []data.ActorAIWaypoint) []ecs.AIWaypoint {
-	if len(points) == 0 {
-		return nil
-	}
-	out := make([]ecs.AIWaypoint, len(points))
-	for i, pt := range points {
-		out[i] = ecs.AIWaypoint{X: pt.X, Y: pt.Y}
-	}
-	return out
 }
