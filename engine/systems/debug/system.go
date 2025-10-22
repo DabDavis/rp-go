@@ -15,7 +15,7 @@ type System struct{}
 
 func (s *System) Update(*ecs.World) {}
 
-// Draw overlays diagnostic info on the current frame.
+// Draw overlays diagnostic info on the current frame (screen-space, no scaling).
 func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	var cam *ecs.Camera
 	for _, e := range w.Entities {
@@ -53,5 +53,17 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		builder.WriteString(fmt.Sprintf("Default Scale: %.2f", defaultScale))
 	}
 
-	platform.DrawText(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
+	// --- Draw text in screen space ---
+	// Create an overlay image not affected by world zoom
+	bounds := screen.Bounds()
+	overlay := platform.NewImage(bounds.Dx(), bounds.Dy())
+
+	// Always draw text at fixed pixel scale
+	platform.DrawText(overlay, builder.String(), basicfont.Face7x13, 10, 20, color.White)
+
+	// Composite overlay onto screen with 1:1 scaling
+	op := platform.NewDrawImageOptions()
+	op.SetFilter(platform.FilterNearest)
+	screen.DrawImage(overlay, op)
 }
+
