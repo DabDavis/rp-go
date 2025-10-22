@@ -13,7 +13,7 @@ type World struct {
 	EventBus any
 
 	systemEntries []systemEntry
-	layerBuckets  map[DrawLayer][]systemEntry
+	drawBuckets   map[DrawLayer][]drawEntry
 	worldLayers   []DrawLayer
 	overlayLayers []DrawLayer
 	nextOrder     int
@@ -25,9 +25,15 @@ type systemEntry struct {
 	order    int
 }
 
+type drawEntry struct {
+	system   DrawableSystem
+	priority int
+	order    int
+}
+
 func NewWorld() *World {
 	return &World{
-		layerBuckets:  make(map[DrawLayer][]systemEntry),
+		drawBuckets:   make(map[DrawLayer][]drawEntry),
 		worldLayers:   []DrawLayer{LayerBackground, LayerWorld, LayerForeground},
 		overlayLayers: []DrawLayer{LayerHUD, LayerDebug},
 	}
@@ -51,13 +57,20 @@ func (w *World) AddSystem(s System) {
 	w.nextOrder++
 
 	w.systemEntries = append(w.systemEntries, entry)
-	stableSort(w.systemEntries)
+	stableSortSystems(w.systemEntries)
 
-	layer := resolveLayer(s)
-	w.ensureLayerRegistered(layer)
-	bucket := append(w.layerBuckets[layer], entry)
-	stableSort(bucket)
-	w.layerBuckets[layer] = bucket
+	if drawable, ok := s.(DrawableSystem); ok {
+		layer := resolveLayer(drawable)
+		w.ensureLayerRegistered(layer)
+		draw := drawEntry{
+			system:   drawable,
+			priority: entry.priority,
+			order:    entry.order,
+		}
+		bucket := append(w.drawBuckets[layer], draw)
+		stableSortDraw(bucket)
+		w.drawBuckets[layer] = bucket
+	}
 }
 
 func (w *World) Update() {
@@ -98,7 +111,7 @@ func (w *World) SetOverlayLayers(layers ...DrawLayer) {
 
 func (w *World) drawLayerGroup(screen *platform.Image, layers []DrawLayer) {
 	for _, layer := range layers {
-		entries := w.layerBuckets[layer]
+		entries := w.drawBuckets[layer]
 		for _, entry := range entries {
 			entry.system.Draw(w, screen)
 		}
@@ -106,8 +119,8 @@ func (w *World) drawLayerGroup(screen *platform.Image, layers []DrawLayer) {
 }
 
 func (w *World) ensureLayerRegistered(layer DrawLayer) {
-	if _, exists := w.layerBuckets[layer]; !exists {
-		w.layerBuckets[layer] = nil
+	if _, exists := w.drawBuckets[layer]; !exists {
+		w.drawBuckets[layer] = nil
 
 		if isOverlayLayer(layer) {
 			w.overlayLayers = appendLayerIfMissing(w.overlayLayers, layer)
@@ -131,7 +144,16 @@ func resolveLayer(s System) DrawLayer {
 	return LayerWorld
 }
 
-func stableSort(entries []systemEntry) {
+func stableSortSystems(entries []systemEntry) {
+	sort.SliceStable(entries, func(i, j int) bool {
+		if entries[i].priority == entries[j].priority {
+			return entries[i].order < entries[j].order
+		}
+		return entries[i].priority < entries[j].priority
+	})
+}
+
+func stableSortDraw(entries []drawEntry) {
 	sort.SliceStable(entries, func(i, j int) bool {
 		if entries[i].priority == entries[j].priority {
 			return entries[i].order < entries[j].order

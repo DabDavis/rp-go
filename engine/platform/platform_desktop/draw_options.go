@@ -1,3 +1,5 @@
+//go:build !headless
+
 package platform_desktop
 
 import "github.com/hajimehoshi/ebiten/v2"
@@ -25,7 +27,6 @@ func (op *DrawImageOptions) SetFilter(f Filter) {
 	}
 }
 
-func (op *DrawImageOptions) Scale(x, y float64)    { op.native.GeoM.Scale(x, y) }
-func (op *DrawImageOptions) Rotate(theta float64)  { op.native.GeoM.Rotate(theta) }
+func (op *DrawImageOptions) Scale(x, y float64)     { op.native.GeoM.Scale(x, y) }
+func (op *DrawImageOptions) Rotate(theta float64)   { op.native.GeoM.Rotate(theta) }
 func (op *DrawImageOptions) Translate(x, y float64) { op.native.GeoM.Translate(x, y) }
-

@@ -135,8 +135,6 @@ func (s *System) Update(w *ecs.World) {
 	cam.Rotation = 0
 }
 
-func (s *System) Draw(*ecs.World, *platform.Image) {}
-
 func clamp(v, min, max float64) float64 {
 	if v < min {
 		return min

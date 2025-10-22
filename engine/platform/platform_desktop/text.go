@@ -1,3 +1,5 @@
+//go:build !headless
+
 package platform_desktop
 
 import (
@@ -13,4 +15,3 @@ func DrawText(dst *Image, str string, face font.Face, x, y int, clr color.Color)
 	}
 	text.Draw(dst.native, str, face, x, y, clr)
 }
-

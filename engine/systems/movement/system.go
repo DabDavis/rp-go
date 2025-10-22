@@ -5,7 +5,6 @@ import (
 
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
-	"rp-go/engine/platform"
 )
 
 // System updates entity positions based on velocity and
@@ -45,6 +44,3 @@ func (s *System) Update(w *ecs.World) {
 		}
 	}
 }
-
-func (s *System) Draw(*ecs.World, *platform.Image) {}
-
