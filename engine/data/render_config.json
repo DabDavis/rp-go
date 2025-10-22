@@ -1,0 +1,7 @@
+{
+  "window": { "width": 960, "height": 720 },
+  "viewport": { "width": 960, "height": 720, "scale": 5 },
+  "player": { "sprite_width": 1024, "sprite_height": 1024, "scale": 0.025 },
+  "terrain": { "tile_size": 32, "scale": 1 }
+}
+

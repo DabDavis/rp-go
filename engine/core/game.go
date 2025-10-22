@@ -1,0 +1,44 @@
+package core
+
+import (
+	"github.com/hajimehoshi/ebiten/v2"
+	"rp-go/engine/data"
+	"rp-go/engine/ecs"
+	"rp-go/engine/scenes/space"
+	"rp-go/engine/systems/camera"
+	"rp-go/engine/systems/debug"
+	"rp-go/engine/systems/input"
+	"rp-go/engine/systems/movement"
+	"rp-go/engine/systems/render"
+	"rp-go/engine/systems/scene"
+)
+
+type GameWorld struct {
+	World  *ecs.World
+	Config data.RenderConfig
+}
+
+func NewGameWorld() *GameWorld {
+	cfg := data.LoadRenderConfig("engine/data/render_config.json")
+	w := ecs.NewWorld()
+
+	// ✅ Scene manager FIRST — it creates entities (ship, camera, planet)
+	sm := &scene.Manager{}
+	w.AddSystem(sm)
+
+	// ✅ Core systems follow in logical order
+	w.AddSystem(&input.System{})
+	w.AddSystem(&movement.System{})
+	w.AddSystem(&camera.System{})
+	w.AddSystem(&render.System{})
+	w.AddSystem(&debug.System{})
+
+	// ✅ Start in the space scene
+	sm.QueueScene(&space.Scene{})
+
+	return &GameWorld{World: w, Config: cfg}
+}
+
+func (g *GameWorld) Update() { g.World.Update() }
+func (g *GameWorld) Draw(screen *ebiten.Image) { g.World.Draw(screen) }
+
