@@ -1,6 +1,8 @@
 package input
 
 import (
+	"math"
+
 	"rp-go/engine/ecs"
 	"rp-go/engine/platform"
 )
