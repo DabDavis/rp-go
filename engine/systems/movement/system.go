@@ -1,30 +1,41 @@
 package movement
 
 import (
+	"math"
+
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
 	"rp-go/engine/platform"
 )
 
+// System updates entity positions based on velocity and
+// rotates sprites to face their direction of travel.
 type System struct{}
 
 func (s *System) Update(w *ecs.World) {
 	for _, e := range w.Entities {
-		pos, ok1 := e.Get("Position").(*ecs.Position)
-		vel, ok2 := e.Get("Velocity").(*ecs.Velocity)
-		if !ok1 || !ok2 {
+		pos, hasPos := e.Get("Position").(*ecs.Position)
+		vel, hasVel := e.Get("Velocity").(*ecs.Velocity)
+		if !hasPos || !hasVel {
 			continue
 		}
 
-		// 2D movement
+		// Skip stationary entities.
 		if vel.VX == 0 && vel.VY == 0 {
 			continue
 		}
 
+		// Move entity.
 		pos.X += vel.VX
 		pos.Y += vel.VY
 
-		// Publish movement event safely
+		// Rotate sprite toward movement direction.
+		if spr, ok := e.Get("Sprite").(*ecs.Sprite); ok {
+			// Offset by +90° (π/2 radians) because sprite art faces upward by default.
+			spr.Rotation = math.Atan2(vel.VY, vel.VX) + math.Pi/2
+		}
+
+		// Publish movement event safely.
 		if bus, ok := w.EventBus.(*events.TypedBus); ok && bus != nil {
 			events.Queue(bus, events.EntityMovedEvent{
 				EntityID: int(e.ID),
@@ -36,3 +47,4 @@ func (s *System) Update(w *ecs.World) {
 }
 
 func (s *System) Draw(*ecs.World, *platform.Image) {}
+
