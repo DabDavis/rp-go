@@ -5,24 +5,64 @@ import (
 	"image"
 	_ "image/png"
 	"os"
+	"sync"
 
-	"github.com/hajimehoshi/ebiten/v2"
+	"rp-go/engine/platform"
 )
 
-func LoadImage(path string) *ebiten.Image {
+type cachedImage struct {
+	once sync.Once
+	img  *platform.Image
+	err  error
+}
+
+var imageCache sync.Map // map[string]*cachedImage
+
+// LoadImage returns an Ebiten image, caching decoded results so repeated
+// requests (even across goroutines) reuse the same GPU resource.
+func LoadImage(path string) *platform.Image {
+	entryAny, _ := imageCache.LoadOrStore(path, &cachedImage{})
+	entry := entryAny.(*cachedImage)
+
+	entry.once.Do(func() {
+		entry.img, entry.err = decodeImage(path)
+		if entry.err != nil {
+			fmt.Printf("[GFX] Failed to load image: %s (%v)\n", path, entry.err)
+		}
+	})
+
+	if entry.err != nil {
+		return nil
+	}
+	return entry.img
+}
+
+// PreloadImages eagerly loads a list of image paths using a worker-per-path
+// fan-out. It reuses the LoadImage cache so subsequent calls are instantaneous.
+func PreloadImages(paths ...string) {
+	var wg sync.WaitGroup
+	wg.Add(len(paths))
+	for _, path := range paths {
+		path := path
+		go func() {
+			defer wg.Done()
+			LoadImage(path)
+		}()
+	}
+	wg.Wait()
+}
+
+func decodeImage(path string) (*platform.Image, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		fmt.Printf("[GFX] Failed to open image: %s (%v)\n", path, err)
-		return nil
+		return nil, err
 	}
 	defer file.Close()
 
 	img, _, err := image.Decode(file)
 	if err != nil {
-		fmt.Printf("[GFX] Failed to decode image: %s (%v)\n", path, err)
-		return nil
+		return nil, err
 	}
 
-	return ebiten.NewImageFromImage(img)
+	return platform.NewImageFromImage(img), nil
 }
-

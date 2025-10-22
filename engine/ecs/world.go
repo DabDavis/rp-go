@@ -1,6 +1,6 @@
 package ecs
 
-import "github.com/hajimehoshi/ebiten/v2"
+import "rp-go/engine/platform"
 
 type World struct {
 	nextID   EntityID
@@ -30,9 +30,8 @@ func (w *World) Update() {
 	}
 }
 
-func (w *World) Draw(screen *ebiten.Image) {
+func (w *World) Draw(screen *platform.Image) {
 	for _, s := range w.Systems {
 		s.Draw(w, screen)
 	}
 }
-

@@ -3,9 +3,9 @@ package scene
 import (
 	"fmt"
 
-	"github.com/hajimehoshi/ebiten/v2"
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
+	"rp-go/engine/platform"
 )
 
 type Manager struct {
@@ -20,7 +20,7 @@ func (m *Manager) Update(w *ecs.World) {
 		m.init = true
 		if bus, ok := w.EventBus.(*events.TypedBus); ok && bus != nil {
 			events.Subscribe(bus, func(e events.SceneChangeEvent) {
-				fmt.Printf("[SCENE] Switching from %s → %s\n", m.currentName(), e.Target)
+				fmt.Printf("[SCENE] Switching from %s -> %s\n", m.currentName(), e.Target)
 				if scn, ok := e.Scene.(ecs.Scene); ok {
 					m.QueueScene(scn)
 				}
@@ -44,18 +44,23 @@ func (m *Manager) Update(w *ecs.World) {
 	}
 }
 
-func (m *Manager) Draw(w *ecs.World, screen *ebiten.Image) {
+func (m *Manager) Draw(w *ecs.World, screen *platform.Image) {
 	if m.current != nil {
 		m.current.Draw(w, screen)
 	}
 }
 
 func (m *Manager) QueueScene(scene ecs.Scene) {
-	if m.current == nil {
-		m.current = scene
-	} else {
-		m.next = scene
+	if scene == nil {
+		return
 	}
+
+	// Always funnel through m.next so the lifecycle consistently
+	// triggers Init/Unload inside Update. The previous implementation
+	// assigned the very first scene straight to m.current, which meant
+	// Init was never called and no entities (camera, player, etc.) were
+	// spawned, leading to the render system spamming "No camera found".
+	m.next = scene
 }
 
 func (m *Manager) currentName() string {
@@ -64,4 +69,3 @@ func (m *Manager) currentName() string {
 	}
 	return "(none)"
 }
-

@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"image/color"
 
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/text"
 	"golang.org/x/image/font/basicfont"
 	"rp-go/engine/ecs"
+	"rp-go/engine/platform"
 )
 
-func DrawPlayerInfo(w *ecs.World, screen *ebiten.Image) {
+func DrawPlayerInfo(w *ecs.World, screen *platform.Image) {
 	var playerPos *ecs.Position
 	for _, e := range w.Entities {
 		if e.Has("CameraTarget") {
@@ -28,6 +27,5 @@ func DrawPlayerInfo(w *ecs.World, screen *ebiten.Image) {
 		"Player: (%.1f, %.1f)\n",
 		playerPos.X, playerPos.Y,
 	)
-	text.Draw(screen, msg, basicfont.Face7x13, 10, 60, color.RGBA{200, 255, 200, 255})
+	platform.DrawText(screen, msg, basicfont.Face7x13, 10, 60, color.RGBA{200, 255, 200, 255})
 }
-
