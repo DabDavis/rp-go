@@ -355,10 +355,10 @@ index 99cb0fa82af3138abd0972081ab11cd5d61b63f3..a410939deb2ba648b2f876cec42d9a8e
  }
 -
 diff --git a/engine/systems/camera/system.go b/engine/systems/camera/system.go
-index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..a8d865dc6372290d05513e89a43ee2b370fd8eaf 100644
+index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..855ebf5cc99b0bb1939ec7f1fd56345cf9bc0e35 100644
 --- a/engine/systems/camera/system.go
 +++ b/engine/systems/camera/system.go
-@@ -1,62 +1,165 @@
+@@ -1,62 +1,166 @@
  package camera
  
  import (
@@ -471,7 +471,8 @@ index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..a8d865dc6372290d05513e89a43ee2b3
 +	if inpututil.IsKeyJustPressed(ebiten.Key0) || inpututil.IsKeyJustPressed(ebiten.KeyKP0) {
 +		cam.TargetScale = clamp(cam.DefaultScale, cam.MinScale, cam.MaxScale)
 +	}
-+	if _, wheelY := ebiten.Wheel(); wheelY != 0 {
++	_, wheelY := ebiten.Wheel()
++	if wheelY != 0 {
 +		zoomDelta += wheelY * s.cfg.ZoomStep
 +	}
 +	if zoomDelta != 0 {

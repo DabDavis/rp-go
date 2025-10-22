@@ -110,10 +110,16 @@ func (s *System) Update(w *ecs.World) {
 		cam.TargetScale = clamp(cam.DefaultScale, cam.MinScale, cam.MaxScale)
 	}
 <<<<<<< ours
+<<<<<<< ours
 	if wheel := ebiten.Wheel(); wheel.Y != 0 {
 		zoomDelta += wheel.Y * s.cfg.ZoomStep
 =======
 	if _, wheelY := ebiten.Wheel(); wheelY != 0 {
+		zoomDelta += wheelY * s.cfg.ZoomStep
+>>>>>>> theirs
+=======
+	_, wheelY := ebiten.Wheel()
+	if wheelY != 0 {
 		zoomDelta += wheelY * s.cfg.ZoomStep
 >>>>>>> theirs
 	}
