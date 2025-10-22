@@ -1,16 +1,19 @@
 package main
 
 import (
+	"flag"
 	"log"
+	"os"
+	"strconv"
+
 	"rp-go/engine/core"
 	"rp-go/engine/ecs"
-
-	"github.com/hajimehoshi/ebiten/v2"
+	"rp-go/engine/platform"
 )
 
 type Game struct {
 	world     *core.GameWorld
-	offscreen *ebiten.Image
+	offscreen *platform.Image
 }
 
 func (g *Game) Update() error {
@@ -18,43 +21,48 @@ func (g *Game) Update() error {
 	return nil
 }
 
-func (g *Game) Draw(screen *ebiten.Image) {
+func (g *Game) Draw(screen *platform.Image) {
 	cfg := g.world.Config
 	w := g.world.World
 	cam := getActiveCamera(w)
 
 	if g.offscreen == nil {
-		g.offscreen = ebiten.NewImage(cfg.Viewport.Width, cfg.Viewport.Height)
+		g.offscreen = platform.NewImage(cfg.Viewport.Width, cfg.Viewport.Height)
 	}
 
-	// ✅ Draw world into offscreen buffer (1:1 internal pixels)
+	// Draw world into offscreen buffer (1:1 internal pixels)
 	g.offscreen.Clear()
 	w.Draw(g.offscreen)
 
 	if cam == nil {
 		screen.DrawImage(g.offscreen, nil)
-		return
+	} else {
+		// Composite offscreen to window, applying zoom & rotation
+		op := platform.NewDrawImageOptions()
+		op.SetFilter(platform.FilterNearest)
+
+		// Apply camera scale and rotation
+		op.Scale(cam.Scale, cam.Scale)
+		op.Rotate(cam.Rotation) // rotation placeholder (0 by default)
+
+		// Center on screen
+		windowW := float64(cfg.Window.Width)
+		windowH := float64(cfg.Window.Height)
+		offW := float64(cfg.Viewport.Width)
+		offH := float64(cfg.Viewport.Height)
+		op.Translate(
+			windowW/2-offW*cam.Scale/2,
+			windowH/2-offH*cam.Scale/2,
+		)
+
+		screen.DrawImage(g.offscreen, op)
 	}
 
-	// ✅ Composite offscreen to window, applying zoom & rotation
-	op := &ebiten.DrawImageOptions{}
-	op.Filter = ebiten.FilterNearest
-
-	// Apply camera scale and rotation
-	op.GeoM.Scale(cam.Scale, cam.Scale)
-	op.GeoM.Rotate(cam.Rotation) // rotation placeholder (0 by default)
-
-	// Center on screen
-	windowW := float64(cfg.Window.Width)
-	windowH := float64(cfg.Window.Height)
-	offW := float64(cfg.Viewport.Width)
-	offH := float64(cfg.Viewport.Height)
-	op.GeoM.Translate(
-		windowW/2-offW*cam.Scale/2,
-		windowH/2-offH*cam.Scale/2,
-	)
-
-	screen.DrawImage(g.offscreen, op)
+	for _, sys := range w.Systems {
+		if overlay, ok := sys.(ecs.OverlaySystem); ok {
+			overlay.DrawOverlay(w, screen)
+		}
+	}
 }
 
 func (g *Game) Layout(outW, outH int) (int, int) {
@@ -68,10 +76,33 @@ func main() {
 
 	game := &Game{world: gameWorld}
 
-	ebiten.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
-	ebiten.SetWindowTitle("rp-go: ECS Camera Prototype")
+	headless := flag.Bool("headless", false, "run without opening a window")
+	frames := flag.Int("frames", 120, "number of frames to run in headless mode")
+	flag.Parse()
 
-	if err := ebiten.RunGame(game); err != nil {
+	if envHeadless := os.Getenv("RP_HEADLESS"); envHeadless != "" {
+		if v, err := strconv.ParseBool(envHeadless); err == nil {
+			*headless = v
+		}
+	}
+	if envFrames := os.Getenv("RP_HEADLESS_FRAMES"); envFrames != "" {
+		if v, err := strconv.Atoi(envFrames); err == nil {
+			*frames = v
+		}
+	}
+
+	if *headless {
+		if err := platform.RunHeadless(game, *frames, cfg.Viewport.Width, cfg.Viewport.Height); err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Headless run complete (%d frames)\n", *frames)
+		return
+	}
+
+	platform.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
+	platform.SetWindowTitle("rp-go: ECS Camera Prototype")
+
+	if err := platform.RunGame(game); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -85,4 +116,3 @@ func getActiveCamera(w *ecs.World) *ecs.Camera {
 	}
 	return nil
 }
-

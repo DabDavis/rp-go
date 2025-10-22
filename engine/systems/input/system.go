@@ -1,8 +1,8 @@
 package input
 
 import (
-	"github.com/hajimehoshi/ebiten/v2"
 	"rp-go/engine/ecs"
+	"rp-go/engine/platform"
 )
 
 type System struct{}
@@ -14,20 +14,19 @@ func (s *System) Update(w *ecs.World) {
 			continue
 		}
 		v.VX, v.VY = 0, 0
-		if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
+		if platform.IsKeyPressed(platform.KeyArrowLeft) || platform.IsKeyPressed(platform.KeyA) {
 			v.VX = -2
 		}
-		if ebiten.IsKeyPressed(ebiten.KeyArrowRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
+		if platform.IsKeyPressed(platform.KeyArrowRight) || platform.IsKeyPressed(platform.KeyD) {
 			v.VX = 2
 		}
-		if ebiten.IsKeyPressed(ebiten.KeyArrowUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
+		if platform.IsKeyPressed(platform.KeyArrowUp) || platform.IsKeyPressed(platform.KeyW) {
 			v.VY = -2
 		}
-		if ebiten.IsKeyPressed(ebiten.KeyArrowDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
+		if platform.IsKeyPressed(platform.KeyArrowDown) || platform.IsKeyPressed(platform.KeyS) {
 			v.VY = 2
 		}
 	}
 }
 
-func (s *System) Draw(*ecs.World, *ebiten.Image) {}
-
+func (s *System) Draw(*ecs.World, *platform.Image) {}
