@@ -9,7 +9,7 @@ import (
 
 type System struct{}
 
-// movement speed per frame
+// Default movement speed (units per frame)
 const moveSpeed = 3.0
 
 func (s *System) Update(w *ecs.World) {
@@ -26,16 +26,16 @@ func (s *System) Update(w *ecs.World) {
 
 		/* ---------------------------- Keyboard movement --------------------------- */
 		if platform.IsKeyPressed(platform.KeyArrowLeft) || platform.IsKeyPressed(platform.KeyA) {
-			vx -= moveSpeed
+			vx -= 1
 		}
 		if platform.IsKeyPressed(platform.KeyArrowRight) || platform.IsKeyPressed(platform.KeyD) {
-			vx += moveSpeed
+			vx += 1
 		}
 		if platform.IsKeyPressed(platform.KeyArrowUp) || platform.IsKeyPressed(platform.KeyW) {
-			vy -= moveSpeed
+			vy -= 1
 		}
 		if platform.IsKeyPressed(platform.KeyArrowDown) || platform.IsKeyPressed(platform.KeyS) {
-			vy += moveSpeed
+			vy += 1
 		}
 
 		/* ----------------------------- Gamepad movement --------------------------- */
@@ -44,7 +44,7 @@ func (s *System) Update(w *ecs.World) {
 				continue
 			}
 
-			// Analog axes
+			// Analog stick input
 			padVX := platform.StandardGamepadAxisValue(id, platform.StandardGamepadAxisLeftStickHorizontal)
 			padVY := platform.StandardGamepadAxisValue(id, platform.StandardGamepadAxisLeftStickVertical)
 
@@ -56,7 +56,7 @@ func (s *System) Update(w *ecs.World) {
 				padVY = 0
 			}
 
-			// Virtual digital overrides
+			// Virtual D-pad override
 			if platform.IsGamepadLeft(id) {
 				padVX = -1
 			} else if platform.IsGamepadRight(id) {
@@ -69,14 +69,22 @@ func (s *System) Update(w *ecs.World) {
 			}
 
 			if padVX != 0 || padVY != 0 {
-				vx = moveSpeed * padVX
-				vy = moveSpeed * padVY
-				break // take first active gamepad
+				vx = padVX
+				vy = padVY
+				break
 			}
 		}
 
-		/* ----------------------------- Apply velocity ----------------------------- */
-		v.VX, v.VY = vx, vy
+		/* ----------------------------- Normalize motion --------------------------- */
+		// Prevent faster diagonal movement (e.g. √2 speed)
+		mag := math.Hypot(vx, vy)
+		if mag > 1 {
+			vx /= mag
+			vy /= mag
+		}
+
+		v.VX = vx * moveSpeed
+		v.VY = vy * moveSpeed
 
 		/* ---------------------------- Sprite orientation --------------------------- */
 		if hasSprite {

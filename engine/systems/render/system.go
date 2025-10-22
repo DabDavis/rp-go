@@ -44,22 +44,29 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		op.SetFilter(platform.FilterNearest)
 
 		imgBounds := sprite.Image.Bounds()
-		entityScale := float64(sprite.Width) / float64(imgBounds.Dx())
-		totalScale := math.Max(0.01, cam.Scale*entityScale)
-		scaleX := totalScale
-		flipOffset := 0.0
+		imgW := float64(imgBounds.Dx())
+		imgH := float64(imgBounds.Dy())
 
+		entityScale := float64(sprite.Width) / imgW
+		totalScale := math.Max(0.01, cam.Scale*entityScale)
+
+		// Center-origin transform
+		op.Translate(-imgW/2, -imgH/2)
+
+		// Flip around center
 		if sprite.FlipHorizontal {
-			scaleX = -totalScale
-			flipOffset = float64(sprite.Width) * cam.Scale
+			op.Scale(-totalScale, totalScale)
+		} else {
+			op.Scale(totalScale, totalScale)
 		}
 
-		op.Scale(scaleX, totalScale)
+		// Rotate around center
 		op.Rotate(sprite.Rotation)
 
-		drawX := (pos.X-cam.X)*cam.Scale + halfW - (float64(sprite.Width)/2)*cam.Scale
-		drawY := (pos.Y-cam.Y)*cam.Scale + halfH - (float64(sprite.Height)/2)*cam.Scale
-		op.Translate(drawX+flipOffset, drawY)
+		// Translate to world position (centered on entity)
+		drawX := (pos.X - cam.X) * cam.Scale
+		drawY := (pos.Y - cam.Y) * cam.Scale
+		op.Translate(drawX+halfW, drawY+halfH)
 
 		screen.DrawImage(sprite.Image, op)
 		drawn++
@@ -71,3 +78,4 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		fmt.Printf("[RENDER] ✅ Drew %d entities\n", drawn)
 	}
 }
+
