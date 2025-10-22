@@ -16,8 +16,9 @@ func (s *System) Update(w *ecs.World) {
 			continue
 		}
 		sprite, hasSprite := e.Get("Sprite").(*ecs.Sprite)
-		const moveSpeed = 2.0
-		vx, vy := 0.0, 0.0
+
+		v.VX, v.VY = 0, 0
+
 		if platform.IsKeyPressed(platform.KeyArrowLeft) || platform.IsKeyPressed(platform.KeyA) {
 			vx -= moveSpeed
 		}
@@ -70,7 +71,16 @@ func (s *System) Update(w *ecs.World) {
 		if hasSprite && (v.VX != 0 || v.VY != 0) {
 			sprite.Rotation = math.Atan2(v.VY, v.VX)
 		}
+
+		if hasSprite {
+			if v.VX < 0 {
+				sprite.FlipHorizontal = true
+			} else if v.VX > 0 {
+				sprite.FlipHorizontal = false
+			}
+		}
 	}
 }
 
 func (s *System) Draw(*ecs.World, *platform.Image) {}
+

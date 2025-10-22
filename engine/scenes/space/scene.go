@@ -2,7 +2,6 @@ package space
 
 import (
 	"fmt"
-	"image/color"
 
 	"rp-go/engine/ecs"
 	"rp-go/engine/gfx"
@@ -71,7 +70,6 @@ func (s *Scene) Init(w *ecs.World) {
 func (s *Scene) Update(w *ecs.World) {}
 
 func (s *Scene) Draw(w *ecs.World, screen *platform.Image) {
-	screen.Fill(color.RGBA{0, 0, 32, 255})
 }
 
 func (s *Scene) Unload(w *ecs.World) {
