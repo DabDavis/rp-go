@@ -37,7 +37,7 @@ func (s *Scene) Init(w *ecs.World) {
 	}
 
 	playerImg := gfx.LoadImage("assets/entities/player.png")
-	player.Add(&ecs.Sprite{Texture: playerImg, Width: 32, Height: 32})
+	player.Add(&ecs.Sprite{Image: playerImg, Width: 32, Height: 32, PixelPerfect: true})
 
 	cam := w.NewEntity()
 	cam.Add(&ecs.Camera{X: 0, Y: 0, Scale: 2.0, Target: player})
