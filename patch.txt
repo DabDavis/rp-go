@@ -1,8 +1,8 @@
 diff --git a/engine/core/game.go b/engine/core/game.go
-index 3d82a2da9d5f40603fa0d2c109e53f405ee33569..227a8bd7b34d896160af8f9eab2fa839dad550a4 100644
+index 3d82a2da9d5f40603fa0d2c109e53f405ee33569..4e326473bfeb912a374d0421a0b20718577167be 100644
 --- a/engine/core/game.go
 +++ b/engine/core/game.go
-@@ -1,44 +1,54 @@
+@@ -1,44 +1,59 @@
  package core
  
  import (
@@ -39,7 +39,13 @@ index 3d82a2da9d5f40603fa0d2c109e53f405ee33569..227a8bd7b34d896160af8f9eab2fa839
  	// ✅ Core systems follow in logical order
  	w.AddSystem(&input.System{})
  	w.AddSystem(&movement.System{})
- 	w.AddSystem(&camera.System{})
+-	w.AddSystem(&camera.System{})
++	w.AddSystem(camera.NewSystem(camera.Config{
++		MinScale: cfg.Viewport.MinScale,
++		MaxScale: cfg.Viewport.MaxScale,
++		ZoomStep: cfg.Viewport.ZoomStep,
++		ZoomLerp: cfg.Viewport.ZoomLerp,
++	}))
  	w.AddSystem(&render.System{})
  	w.AddSystem(&debug.System{})
  
@@ -59,6 +65,142 @@ index 3d82a2da9d5f40603fa0d2c109e53f405ee33569..227a8bd7b34d896160af8f9eab2fa839
 +	}
 +}
 +func (g *GameWorld) Draw(screen *ebiten.Image) { g.World.Draw(screen) }
+diff --git a/engine/data/loader.go b/engine/data/loader.go
+index 5f4c5ae130c4ee5df052ead663e93203ff8f64e8..4fc4f29ff43d5b7dd508fd15a121c4a29d756348 100644
+--- a/engine/data/loader.go
++++ b/engine/data/loader.go
+@@ -1,44 +1,47 @@
+ package data
+ 
+ import (
+ 	"encoding/json"
+ 	"os"
+ )
+ 
+ type RenderConfig struct {
+ 	Window struct {
+ 		Width  int `json:"width"`
+ 		Height int `json:"height"`
+ 	} `json:"window"`
+ 
+ 	Viewport struct {
+-		Width  int     `json:"width"`
+-		Height int     `json:"height"`
+-		Scale  float64 `json:"scale"`
++		Width    int     `json:"width"`
++		Height   int     `json:"height"`
++		Scale    float64 `json:"scale"`
++		MinScale float64 `json:"min_scale"`
++		MaxScale float64 `json:"max_scale"`
++		ZoomStep float64 `json:"zoom_step"`
++		ZoomLerp float64 `json:"zoom_lerp"`
+ 	} `json:"viewport"`
+ 
+ 	Player struct {
+ 		SpriteWidth  int     `json:"sprite_width"`
+ 		SpriteHeight int     `json:"sprite_height"`
+ 		Scale        float64 `json:"scale"`
+ 	} `json:"player"`
+ 
+ 	Terrain struct {
+ 		TileSize int     `json:"tile_size"`
+ 		Scale    float64 `json:"scale"`
+ 	} `json:"terrain"`
+ }
+ 
+ // LoadRenderConfig reads and parses the JSON config file.
+ func LoadRenderConfig(path string) RenderConfig {
+ 	data, err := os.ReadFile(path)
+ 	if err != nil {
+ 		panic(err)
+ 	}
+ 	var cfg RenderConfig
+ 	if err := json.Unmarshal(data, &cfg); err != nil {
+ 		panic(err)
+ 	}
+ 	return cfg
+ }
+-
+diff --git a/engine/data/render_config.json b/engine/data/render_config.json
+index cab44ab9bcd5de48bc7619377fecb3cba9f39d3d..0a8dcbf827e7ca8edef985da509c2845a85fc047 100644
+--- a/engine/data/render_config.json
++++ b/engine/data/render_config.json
+@@ -1,7 +1,15 @@
+ {
+   "window": { "width": 960, "height": 720 },
+-  "viewport": { "width": 960, "height": 720, "scale": 5 },
++  "viewport": {
++    "width": 960,
++    "height": 720,
++    "scale": 1.5,
++    "min_scale": 0.5,
++    "max_scale": 3,
++    "zoom_step": 0.1,
++    "zoom_lerp": 0.2
++  },
+   "player": { "sprite_width": 1024, "sprite_height": 1024, "scale": 0.025 },
+   "terrain": { "tile_size": 32, "scale": 1 }
+ }
+ 
+diff --git a/engine/ecs/components.go b/engine/ecs/components.go
+index 7766f1dbdebe7b6bb140279de8b8ba11e1cd3578..35ac0f9509cb4bcfe4f8e764390bcc8758fa1cd6 100644
+--- a/engine/ecs/components.go
++++ b/engine/ecs/components.go
+@@ -1,37 +1,46 @@
+ package ecs
+ 
+ import "github.com/hajimehoshi/ebiten/v2"
+ 
+ type Position struct{ X, Y float64 }
++
+ func (p *Position) Name() string { return "Position" }
+ 
+ type Velocity struct{ VX, VY float64 }
++
+ func (v *Velocity) Name() string { return "Velocity" }
+ 
+ type Sprite struct {
+-	Image  *ebiten.Image
+-	Width  int
+-	Height int
++	Image    *ebiten.Image
++	Width    int
++	Height   int
+ 	Rotation float64
+ }
++
+ func (s *Sprite) Name() string { return "Sprite" }
+ 
+ type Camera struct {
+-	X, Y   float64
+-	Scale  float64
+-	Rotation float64
+-	Target *Entity
++	X, Y         float64
++	Scale        float64
++	Rotation     float64
++	Target       *Entity
++	TargetScale  float64
++	MinScale     float64
++	MaxScale     float64
++	DefaultScale float64
+ }
++
+ func (c *Camera) Name() string { return "Camera" }
+ 
+ type CameraTarget struct{}
++
+ func (c *CameraTarget) Name() string { return "CameraTarget" }
+ 
+ // Actor defines metadata for players, NPCs, hostiles, and ships.
+ type Actor struct {
+ 	ID         string // logical ID (e.g., "player", "npc_guard")
+ 	Archetype  string // "player", "npc", "enemy", "ship"
+ 	Persistent bool   // whether to keep across scene transitions
+ }
+-func (a *Actor) Name() string { return "Actor" }
+ 
++func (a *Actor) Name() string { return "Actor" }
 diff --git a/engine/gfx/loader.go b/engine/gfx/loader.go
 index 2bcc560ec1775aae48b9b2d347a915b0b37322c7..d2a812b2d26eea74264a81184d08024e975ce58c 100644
 --- a/engine/gfx/loader.go
@@ -210,6 +352,232 @@ index 99cb0fa82af3138abd0972081ab11cd5d61b63f3..a410939deb2ba648b2f876cec42d9a8e
  
  func (s *Scene) Unload(w *ecs.World) {
  	fmt.Println("[SCENE] Unloading: Space")
+ }
+-
+diff --git a/engine/systems/camera/system.go b/engine/systems/camera/system.go
+index 6dfebf32d9b196acbf3a585f6a4b475596bf542f..b4b725a97b8d3d943528ed2a05ea86aa7a748c16 100644
+--- a/engine/systems/camera/system.go
++++ b/engine/systems/camera/system.go
+@@ -1,62 +1,165 @@
+ package camera
+ 
+ import (
+ 	"math"
+ 
+ 	"github.com/hajimehoshi/ebiten/v2"
++	"github.com/hajimehoshi/ebiten/v2/inpututil"
++
+ 	"rp-go/engine/ecs"
++	"rp-go/engine/events"
+ )
+ 
+-type System struct{}
++// Config controls runtime camera zoom limits and responsiveness.
++type Config struct {
++	MinScale float64
++	MaxScale float64
++	ZoomStep float64
++	ZoomLerp float64
++}
++
++func (c Config) normalized() Config {
++	if c.MinScale <= 0 {
++		c.MinScale = 0.5
++	}
++	if c.MaxScale <= 0 {
++		c.MaxScale = 3
++	}
++	if c.MaxScale < c.MinScale {
++		c.MaxScale = c.MinScale
++	}
++	if c.ZoomStep <= 0 {
++		c.ZoomStep = 0.1
++	}
++	if c.ZoomLerp < 0 {
++		c.ZoomLerp = 0
++	}
++	return c
++}
++
++type System struct {
++	cfg        Config
++	subscribed bool
++}
++
++func NewSystem(cfg Config) *System {
++	return &System{cfg: cfg.normalized()}
++}
+ 
+ func (s *System) Update(w *ecs.World) {
+ 	var cam *ecs.Camera
+ 	var target *ecs.Position
+ 	var targetSprite *ecs.Sprite
+ 
+ 	for _, e := range w.Entities {
+ 		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
+ 			cam = c
+ 		}
+ 		if e.Has("CameraTarget") {
+ 			if pos, ok := e.Get("Position").(*ecs.Position); ok {
+ 				target = pos
+ 			}
+ 			if spr, ok := e.Get("Sprite").(*ecs.Sprite); ok {
+ 				targetSprite = spr
+ 			}
+ 		}
+ 	}
+ 
+ 	if cam == nil || target == nil {
+ 		return
+ 	}
+ 
++	// One-time wiring for zoom events.
++	if !s.subscribed {
++		if bus, ok := w.EventBus.(*events.TypedBus); ok && bus != nil {
++			events.Subscribe(bus, func(ev events.CameraZoomEvent) {
++				cam.TargetScale = clamp(ev.NewScale, cam.MinScale, cam.MaxScale)
++			})
++			s.subscribed = true
++		}
++	}
++
++	// Ensure the camera carries sane zoom limits and defaults.
++	if cam.MinScale <= 0 {
++		cam.MinScale = s.cfg.MinScale
++	}
++	if cam.MaxScale <= 0 {
++		cam.MaxScale = s.cfg.MaxScale
++	}
++	if cam.MaxScale < cam.MinScale {
++		cam.MaxScale = cam.MinScale
++	}
++	if cam.DefaultScale <= 0 {
++		cam.DefaultScale = clamp(cam.Scale, cam.MinScale, cam.MaxScale)
++	}
++	if cam.TargetScale <= 0 {
++		cam.TargetScale = clamp(cam.Scale, cam.MinScale, cam.MaxScale)
++	} else {
++		cam.TargetScale = clamp(cam.TargetScale, cam.MinScale, cam.MaxScale)
++	}
++
++	// Handle zoom input (keyboard + mouse wheel).
++	zoomDelta := 0.0
++	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyKPSubtract) {
++		zoomDelta -= s.cfg.ZoomStep
++	}
++	if inpututil.IsKeyJustPressed(ebiten.KeyEqual) || inpututil.IsKeyJustPressed(ebiten.KeyKPAdd) {
++		zoomDelta += s.cfg.ZoomStep
++	}
++	if inpututil.IsKeyJustPressed(ebiten.Key0) || inpututil.IsKeyJustPressed(ebiten.KeyKP0) {
++		cam.TargetScale = clamp(cam.DefaultScale, cam.MinScale, cam.MaxScale)
++	}
++	if wheel := ebiten.Wheel(); wheel.Y != 0 {
++		zoomDelta += wheel.Y * s.cfg.ZoomStep
++	}
++	if zoomDelta != 0 {
++		cam.TargetScale = clamp(cam.TargetScale+zoomDelta, cam.MinScale, cam.MaxScale)
++	}
++
+ 	// Smooth follow
+ 	cam.X += (target.X - cam.X) * 0.1
+ 	cam.Y += (target.Y - cam.Y) * 0.1
+ 
++	// Smooth zoom
++	if s.cfg.ZoomLerp <= 0 {
++		cam.Scale = cam.TargetScale
++	} else {
++		cam.Scale += (cam.TargetScale - cam.Scale) * math.Min(1, s.cfg.ZoomLerp)
++		if math.Abs(cam.Scale-cam.TargetScale) < 1e-4 {
++			cam.Scale = cam.TargetScale
++		}
++	}
++
+ 	// Manual rotation (Q / E)
+ 	const rotSpeed = 0.03
+ 	if ebiten.IsKeyPressed(ebiten.KeyQ) {
+ 		cam.Rotation -= rotSpeed
+ 	}
+ 	if ebiten.IsKeyPressed(ebiten.KeyE) {
+ 		cam.Rotation += rotSpeed
+ 	}
+ 
+ 	// Sync player sprite rotation to camera
+ 	if targetSprite != nil {
+ 		targetSprite.Rotation = cam.Rotation
+ 	}
+ 
+ 	// Normalize rotation
+ 	if cam.Rotation > math.Pi*2 {
+ 		cam.Rotation -= math.Pi * 2
+ 	} else if cam.Rotation < 0 {
+ 		cam.Rotation += math.Pi * 2
+ 	}
+ }
+ 
+ func (s *System) Draw(*ecs.World, *ebiten.Image) {}
+ 
++func clamp(v, min, max float64) float64 {
++	if v < min {
++		return min
++	}
++	if v > max {
++		return max
++	}
++	return v
++}
+diff --git a/engine/systems/debug/debug_camera.go b/engine/systems/debug/debug_camera.go
+index e27d8f769c36eff4a04330f87a12e6762140a61a..9198207eab35cab57b43352d14061dfb5accf9ed 100644
+--- a/engine/systems/debug/debug_camera.go
++++ b/engine/systems/debug/debug_camera.go
+@@ -3,34 +3,46 @@ package debug
+ import (
+ 	"fmt"
+ 	"image/color"
+ 
+ 	"github.com/hajimehoshi/ebiten/v2"
+ 	"github.com/hajimehoshi/ebiten/v2/text"
+ 	"golang.org/x/image/font/basicfont"
+ 	"rp-go/engine/ecs"
+ )
+ 
+ func DrawCameraInfo(w *ecs.World, screen *ebiten.Image) {
+ 	var cam *ecs.Camera
+ 	for _, e := range w.Entities {
+ 		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
+ 			cam = c
+ 			break
+ 		}
+ 	}
+ 
+ 	if cam == nil {
+ 		return
+ 	}
+ 
+ 	sw := float64(screen.Bounds().Dx())
+ 	sh := float64(screen.Bounds().Dy())
+-	
++
++	minScale := cam.MinScale
++	if minScale <= 0 {
++		minScale = cam.Scale
++	}
++	maxScale := cam.MaxScale
++	if maxScale <= 0 {
++		maxScale = cam.Scale
++	}
++	targetScale := cam.TargetScale
++	if targetScale <= 0 {
++		targetScale = cam.Scale
++	}
++
+ 	msg := fmt.Sprintf(
+-	"Camera: (%.1f, %.1f)\nScale: %.2f (%.1f–%.1f)\nViewport: %.0fx%.0f\n",
+-	cam.X, cam.Y, cam.Scale, 0.5, 3.0, sw, sh,
++		"Camera: (%.1f, %.1f)\nScale: %.2f → %.2f\nBounds: %.2f–%.2f\nViewport: %.0fx%.0f\n",
++		cam.X, cam.Y, cam.Scale, targetScale, minScale, maxScale, sw, sh,
+ 	)
+ 
+ 	text.Draw(screen, msg, basicfont.Face7x13, 10, 20, color.White)
  }
 -
 diff --git a/engine/systems/scene/system.go b/engine/systems/scene/system.go

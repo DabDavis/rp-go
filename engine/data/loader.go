@@ -12,9 +12,13 @@ type RenderConfig struct {
 	} `json:"window"`
 
 	Viewport struct {
-		Width  int     `json:"width"`
-		Height int     `json:"height"`
-		Scale  float64 `json:"scale"`
+		Width    int     `json:"width"`
+		Height   int     `json:"height"`
+		Scale    float64 `json:"scale"`
+		MinScale float64 `json:"min_scale"`
+		MaxScale float64 `json:"max_scale"`
+		ZoomStep float64 `json:"zoom_step"`
+		ZoomLerp float64 `json:"zoom_lerp"`
 	} `json:"viewport"`
 
 	Player struct {
@@ -41,4 +45,3 @@ func LoadRenderConfig(path string) RenderConfig {
 	}
 	return cfg
 }
-

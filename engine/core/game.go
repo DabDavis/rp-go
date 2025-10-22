@@ -34,7 +34,12 @@ func NewGameWorld() *GameWorld {
 	// ✅ Core systems follow in logical order
 	w.AddSystem(&input.System{})
 	w.AddSystem(&movement.System{})
-	w.AddSystem(&camera.System{})
+	w.AddSystem(camera.NewSystem(camera.Config{
+		MinScale: cfg.Viewport.MinScale,
+		MaxScale: cfg.Viewport.MaxScale,
+		ZoomStep: cfg.Viewport.ZoomStep,
+		ZoomLerp: cfg.Viewport.ZoomLerp,
+	}))
 	w.AddSystem(&render.System{})
 	w.AddSystem(&debug.System{})
 
