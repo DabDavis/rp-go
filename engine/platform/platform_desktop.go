@@ -12,6 +12,10 @@ import (
 	"golang.org/x/image/font"
 )
 
+/* -------------------------------------------------------------------------- */
+/*                                 Image API                                  */
+/* -------------------------------------------------------------------------- */
+
 type Image struct {
 	native *ebiten.Image
 }
@@ -61,6 +65,10 @@ func (img *Image) DrawImage(src *Image, op *DrawImageOptions) {
 	img.native.DrawImage(src.native, nativeOp)
 }
 
+/* -------------------------------------------------------------------------- */
+/*                              Drawing Options                               */
+/* -------------------------------------------------------------------------- */
+
 type DrawImageOptions struct {
 	native *ebiten.DrawImageOptions
 }
@@ -68,6 +76,12 @@ type DrawImageOptions struct {
 func NewDrawImageOptions() *DrawImageOptions {
 	return &DrawImageOptions{native: &ebiten.DrawImageOptions{}}
 }
+
+type Filter int
+
+const (
+	FilterNearest Filter = iota
+)
 
 func (op *DrawImageOptions) SetFilter(f Filter) {
 	if op == nil {
@@ -100,11 +114,9 @@ func (op *DrawImageOptions) Translate(x, y float64) {
 	op.native.GeoM.Translate(x, y)
 }
 
-type Filter int
-
-const (
-	FilterNearest Filter = iota
-)
+/* -------------------------------------------------------------------------- */
+/*                                 Keyboard                                   */
+/* -------------------------------------------------------------------------- */
 
 type Key = ebiten.Key
 
@@ -135,32 +147,28 @@ func IsKeyJustPressed(k Key) bool {
 	return inpututil.IsKeyJustPressed(k)
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                 Gamepads                                   */
+/* -------------------------------------------------------------------------- */
+
 type GamepadID = ebiten.GamepadID
-
-type GamepadLayoutID = ebiten.StandardGamepadLayoutID
-
 type StandardGamepadButton = ebiten.StandardGamepadButton
-
-const (
-	StandardGamepadButtonLeft  StandardGamepadButton = ebiten.StandardGamepadButtonLeft
-	StandardGamepadButtonRight StandardGamepadButton = ebiten.StandardGamepadButtonRight
-	StandardGamepadButtonUp    StandardGamepadButton = ebiten.StandardGamepadButtonUp
-	StandardGamepadButtonDown  StandardGamepadButton = ebiten.StandardGamepadButtonDown
-)
-
 type StandardGamepadAxis = ebiten.StandardGamepadAxis
 
+// Standard layout detection (replaces the old StandardGamepadLayoutID)
+func IsStandardGamepadLayoutAvailable(id GamepadID) bool {
+	return ebiten.IsStandardGamepadLayoutAvailable(id)
+}
+
+// Analog stick axes
 const (
 	StandardGamepadAxisLeftStickHorizontal StandardGamepadAxis = ebiten.StandardGamepadAxisLeftStickHorizontal
 	StandardGamepadAxisLeftStickVertical   StandardGamepadAxis = ebiten.StandardGamepadAxisLeftStickVertical
 )
 
+// Connected gamepads
 func GamepadIDs() []GamepadID {
 	return ebiten.GamepadIDs()
-}
-
-func StandardGamepadLayoutID(id GamepadID) (GamepadLayoutID, bool) {
-	return ebiten.StandardGamepadLayoutID(id)
 }
 
 func StandardGamepadAxisValue(id GamepadID, axis StandardGamepadAxis) float64 {
@@ -170,6 +178,27 @@ func StandardGamepadAxisValue(id GamepadID, axis StandardGamepadAxis) float64 {
 func IsStandardGamepadButtonPressed(id GamepadID, button StandardGamepadButton) bool {
 	return ebiten.IsStandardGamepadButtonPressed(id, button)
 }
+
+// Virtual directional helpers — emulate digital inputs from the analog stick
+func IsGamepadLeft(id GamepadID) bool {
+	return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickHorizontal) < -0.5
+}
+
+func IsGamepadRight(id GamepadID) bool {
+	return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickHorizontal) > 0.5
+}
+
+func IsGamepadUp(id GamepadID) bool {
+	return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickVertical) < -0.5
+}
+
+func IsGamepadDown(id GamepadID) bool {
+	return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickVertical) > 0.5
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Window & Misc                                */
+/* -------------------------------------------------------------------------- */
 
 func Wheel() (float64, float64) {
 	return ebiten.Wheel()
@@ -186,6 +215,10 @@ func SetWindowSize(w, h int) {
 func SetWindowTitle(title string) {
 	ebiten.SetWindowTitle(title)
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                   Game                                     */
+/* -------------------------------------------------------------------------- */
 
 type Game interface {
 	Update() error
@@ -213,6 +246,7 @@ func RunGame(game Game) error {
 	return ebiten.RunGame(&gameAdapter{game: game})
 }
 
+// Headless render mode for tests and CI
 func RunHeadless(game Game, frames int, width, height int) error {
 	if frames <= 0 {
 		return nil
@@ -228,9 +262,14 @@ func RunHeadless(game Game, frames int, width, height int) error {
 	return nil
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                   Text                                     */
+/* -------------------------------------------------------------------------- */
+
 func DrawText(dst *Image, str string, face font.Face, x, y int, clr color.Color) {
 	if dst == nil {
 		return
 	}
 	text.Draw(dst.native, str, face, x, y, clr)
 }
+

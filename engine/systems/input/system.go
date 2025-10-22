@@ -9,16 +9,22 @@ import (
 
 type System struct{}
 
+// movement speed per frame
+const moveSpeed = 3.0
+
 func (s *System) Update(w *ecs.World) {
 	for _, e := range w.Entities {
 		v, ok := e.Get("Velocity").(*ecs.Velocity)
 		if !ok {
 			continue
 		}
+
 		sprite, hasSprite := e.Get("Sprite").(*ecs.Sprite)
 
-		v.VX, v.VY = 0, 0
+		// Local velocity deltas
+		vx, vy := 0.0, 0.0
 
+		/* ---------------------------- Keyboard movement --------------------------- */
 		if platform.IsKeyPressed(platform.KeyArrowLeft) || platform.IsKeyPressed(platform.KeyA) {
 			vx -= moveSpeed
 		}
@@ -32,15 +38,17 @@ func (s *System) Update(w *ecs.World) {
 			vy += moveSpeed
 		}
 
-		padVX, padVY := 0.0, 0.0
+		/* ----------------------------- Gamepad movement --------------------------- */
 		for _, id := range platform.GamepadIDs() {
-			if _, ok := platform.StandardGamepadLayoutID(id); !ok {
+			if !platform.IsStandardGamepadLayoutAvailable(id) {
 				continue
 			}
 
-			padVX = platform.StandardGamepadAxisValue(id, platform.StandardGamepadAxisLeftStickHorizontal)
-			padVY = platform.StandardGamepadAxisValue(id, platform.StandardGamepadAxisLeftStickVertical)
+			// Analog axes
+			padVX := platform.StandardGamepadAxisValue(id, platform.StandardGamepadAxisLeftStickHorizontal)
+			padVY := platform.StandardGamepadAxisValue(id, platform.StandardGamepadAxisLeftStickVertical)
 
+			// Deadzone
 			if math.Abs(padVX) < 0.1 {
 				padVX = 0
 			}
@@ -48,31 +56,33 @@ func (s *System) Update(w *ecs.World) {
 				padVY = 0
 			}
 
-			if platform.IsStandardGamepadButtonPressed(id, platform.StandardGamepadButtonLeft) {
+			// Virtual digital overrides
+			if platform.IsGamepadLeft(id) {
 				padVX = -1
-			} else if platform.IsStandardGamepadButtonPressed(id, platform.StandardGamepadButtonRight) {
+			} else if platform.IsGamepadRight(id) {
 				padVX = 1
 			}
-			if platform.IsStandardGamepadButtonPressed(id, platform.StandardGamepadButtonUp) {
+			if platform.IsGamepadUp(id) {
 				padVY = -1
-			} else if platform.IsStandardGamepadButtonPressed(id, platform.StandardGamepadButtonDown) {
+			} else if platform.IsGamepadDown(id) {
 				padVY = 1
 			}
 
 			if padVX != 0 || padVY != 0 {
 				vx = moveSpeed * padVX
 				vy = moveSpeed * padVY
-				break
+				break // take first active gamepad
 			}
 		}
 
+		/* ----------------------------- Apply velocity ----------------------------- */
 		v.VX, v.VY = vx, vy
 
-		if hasSprite && (v.VX != 0 || v.VY != 0) {
-			sprite.Rotation = math.Atan2(v.VY, v.VX)
-		}
-
+		/* ---------------------------- Sprite orientation --------------------------- */
 		if hasSprite {
+			if v.VX != 0 || v.VY != 0 {
+				sprite.Rotation = math.Atan2(v.VY, v.VX)
+			}
 			if v.VX < 0 {
 				sprite.FlipHorizontal = true
 			} else if v.VX > 0 {
