@@ -1,0 +1,122 @@
+{
+  "actors": [
+    {
+      "name": "dark-elf-ship-1",
+      "archetype": "enemy",
+      "persistent": false,
+      "sprite": {
+        "image": "assets/entities/dark-elf-ship-1.png",
+        "width": 64,
+        "height": 64,
+        "pixel_perfect": true
+      },
+      "velocity": {
+        "vx": 0,
+        "vy": 0
+      },
+      "ai": {
+        "speed": 2.4,
+        "follow": {
+          "target": "template:dark-elf-ship-commander",
+          "offset_x": 32,
+          "offset_y": 72,
+          "min_distance": 12,
+          "max_distance": 280,
+          "speed": 2.1
+        },
+        "pursue": {
+          "target": "player",
+          "engage_distance": 240,
+          "speed": 3.0
+        },
+        "patrol": {
+          "variant": "pingpong",
+          "speed": 2.0,
+          "waypoints": [
+            { "x": 260, "y": 220 },
+            { "x": 480, "y": 260 },
+            { "x": 340, "y": 360 }
+          ]
+        },
+        "retreat": {
+          "target": "player",
+          "trigger_distance": 90,
+          "safe_distance": 200,
+          "speed": 3.2
+        }
+      }
+    },
+    {
+      "name": "dark-elf-ship-commander",
+      "archetype": "enemy",
+      "persistent": false,
+      "sprite": {
+        "image": "assets/entities/dark-elf-ship-commander.png",
+        "width": 96,
+        "height": 96,
+        "pixel_perfect": true
+      },
+      "velocity": {
+        "vx": 0,
+        "vy": 0
+      },
+      "ai": {
+        "speed": 2.2,
+        "patrol": {
+          "variant": "loop",
+          "speed": 1.8,
+          "waypoints": [
+            { "x": 240, "y": 180 },
+            { "x": 520, "y": 200 },
+            { "x": 520, "y": 340 },
+            { "x": 240, "y": 320 }
+          ]
+        },
+        "travel": {
+          "variant": "random",
+          "speed": 2.6,
+          "waypoints": [
+            { "x": 180, "y": 140 },
+            { "x": 640, "y": 180 },
+            { "x": 660, "y": 420 },
+            { "x": 160, "y": 380 }
+          ]
+        }
+      }
+    },
+    {
+      "name": "dark-elf-ship-courier",
+      "archetype": "enemy",
+      "persistent": false,
+      "sprite": {
+        "image": "assets/entities/dark-elf-ship-1.png",
+        "width": 64,
+        "height": 64,
+        "pixel_perfect": true
+      },
+      "velocity": {
+        "vx": 0,
+        "vy": 0
+      },
+      "ai": {
+        "speed": 2.6,
+        "travel": {
+          "variant": "once",
+          "speed": 3.0,
+          "waypoints": [
+            { "x": 120, "y": 120 },
+            { "x": 680, "y": 160 },
+            { "x": 700, "y": 460 },
+            { "x": 140, "y": 420 }
+          ]
+        },
+        "retreat": {
+          "target": "player",
+          "trigger_distance": 150,
+          "safe_distance": 260,
+          "speed": 3.4
+        }
+      }
+    }
+  ]
+}
