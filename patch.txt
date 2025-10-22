@@ -1,0 +1,239 @@
+diff --git a/engine/core/game.go b/engine/core/game.go
+index 3d82a2da9d5f40603fa0d2c109e53f405ee33569..227a8bd7b34d896160af8f9eab2fa839dad550a4 100644
+--- a/engine/core/game.go
++++ b/engine/core/game.go
+@@ -1,44 +1,54 @@
+ package core
+ 
+ import (
+ 	"github.com/hajimehoshi/ebiten/v2"
+ 	"rp-go/engine/data"
+ 	"rp-go/engine/ecs"
++	"rp-go/engine/events"
+ 	"rp-go/engine/scenes/space"
+ 	"rp-go/engine/systems/camera"
+ 	"rp-go/engine/systems/debug"
+ 	"rp-go/engine/systems/input"
+ 	"rp-go/engine/systems/movement"
+ 	"rp-go/engine/systems/render"
+ 	"rp-go/engine/systems/scene"
+ )
+ 
+ type GameWorld struct {
+ 	World  *ecs.World
+ 	Config data.RenderConfig
+ }
+ 
+ func NewGameWorld() *GameWorld {
+ 	cfg := data.LoadRenderConfig("engine/data/render_config.json")
+ 	w := ecs.NewWorld()
+ 
++	// Wire up the typed event bus so systems can coordinate without
++	// direct dependencies. It gets flushed at the end of every update.
++	w.EventBus = events.NewBus()
++
+ 	// ✅ Scene manager FIRST — it creates entities (ship, camera, planet)
+ 	sm := &scene.Manager{}
+ 	w.AddSystem(sm)
+ 
+ 	// ✅ Core systems follow in logical order
+ 	w.AddSystem(&input.System{})
+ 	w.AddSystem(&movement.System{})
+ 	w.AddSystem(&camera.System{})
+ 	w.AddSystem(&render.System{})
+ 	w.AddSystem(&debug.System{})
+ 
+ 	// ✅ Start in the space scene
+ 	sm.QueueScene(&space.Scene{})
+ 
+ 	return &GameWorld{World: w, Config: cfg}
+ }
+ 
+-func (g *GameWorld) Update() { g.World.Update() }
+-func (g *GameWorld) Draw(screen *ebiten.Image) { g.World.Draw(screen) }
++func (g *GameWorld) Update() {
++	g.World.Update()
+ 
++	if bus, ok := g.World.EventBus.(*events.TypedBus); ok && bus != nil {
++		bus.Flush()
++	}
++}
++func (g *GameWorld) Draw(screen *ebiten.Image) { g.World.Draw(screen) }
+diff --git a/engine/gfx/loader.go b/engine/gfx/loader.go
+index 2bcc560ec1775aae48b9b2d347a915b0b37322c7..d2a812b2d26eea74264a81184d08024e975ce58c 100644
+--- a/engine/gfx/loader.go
++++ b/engine/gfx/loader.go
+@@ -1,28 +1,68 @@
+ package gfx
+ 
+ import (
+ 	"fmt"
+ 	"image"
+ 	_ "image/png"
+ 	"os"
++	"sync"
+ 
+ 	"github.com/hajimehoshi/ebiten/v2"
+ )
+ 
++type cachedImage struct {
++	once sync.Once
++	img  *ebiten.Image
++	err  error
++}
++
++var imageCache sync.Map // map[string]*cachedImage
++
++// LoadImage returns an Ebiten image, caching decoded results so repeated
++// requests (even across goroutines) reuse the same GPU resource.
+ func LoadImage(path string) *ebiten.Image {
++	entryAny, _ := imageCache.LoadOrStore(path, &cachedImage{})
++	entry := entryAny.(*cachedImage)
++
++	entry.once.Do(func() {
++		entry.img, entry.err = decodeImage(path)
++		if entry.err != nil {
++			fmt.Printf("[GFX] Failed to load image: %s (%v)\n", path, entry.err)
++		}
++	})
++
++	if entry.err != nil {
++		return nil
++	}
++	return entry.img
++}
++
++// PreloadImages eagerly loads a list of image paths using a worker-per-path
++// fan-out. It reuses the LoadImage cache so subsequent calls are instantaneous.
++func PreloadImages(paths ...string) {
++	var wg sync.WaitGroup
++	wg.Add(len(paths))
++	for _, path := range paths {
++		path := path
++		go func() {
++			defer wg.Done()
++			LoadImage(path)
++		}()
++	}
++	wg.Wait()
++}
++
++func decodeImage(path string) (*ebiten.Image, error) {
+ 	file, err := os.Open(path)
+ 	if err != nil {
+-		fmt.Printf("[GFX] Failed to open image: %s (%v)\n", path, err)
+-		return nil
++		return nil, err
+ 	}
+ 	defer file.Close()
+ 
+ 	img, _, err := image.Decode(file)
+ 	if err != nil {
+-		fmt.Printf("[GFX] Failed to decode image: %s (%v)\n", path, err)
+-		return nil
++		return nil, err
+ 	}
+ 
+-	return ebiten.NewImageFromImage(img)
++	return ebiten.NewImageFromImage(img), nil
+ }
+-
+diff --git a/engine/scenes/space/scene.go b/engine/scenes/space/scene.go
+index 99cb0fa82af3138abd0972081ab11cd5d61b63f3..a410939deb2ba648b2f876cec42d9a8e937e38dd 100644
+--- a/engine/scenes/space/scene.go
++++ b/engine/scenes/space/scene.go
+@@ -1,63 +1,67 @@
+ package space
+ 
+ import (
+ 	"fmt"
+ 	"image/color"
+ 
+ 	"github.com/hajimehoshi/ebiten/v2"
+ 	"rp-go/engine/ecs"
+ 	"rp-go/engine/gfx"
+ )
+ 
+ type Scene struct{ initialized bool }
+ 
+ func (s *Scene) Name() string { return "space" }
+ 
+ func (s *Scene) Init(w *ecs.World) {
+ 	if s.initialized {
+ 		return
+ 	}
+ 	s.initialized = true
+ 
+ 	fmt.Println("[SCENE] Initializing: Space")
+ 
++	// Warm the texture cache so the first frame doesn't block on disk IO.
++	gfx.PreloadImages(
++		"assets/entities/ship.png",
++		"assets/entities/planet.png",
++	)
++
+ 	// === Player Ship ===
+ 	ship := w.NewEntity()
+ 	ship.Add(&ecs.Actor{
+ 		ID:         "player",
+ 		Archetype:  "ship",
+ 		Persistent: true,
+ 	})
+ 	ship.Add(&ecs.Position{X: 100, Y: 100})
+ 	ship.Add(&ecs.Velocity{})
+ 	ship.Add(&ecs.CameraTarget{})
+ 
+ 	shipImg := gfx.LoadImage("assets/entities/ship.png")
+ 	ship.Add(&ecs.Sprite{Image: shipImg, Width: 64, Height: 64})
+ 
+ 	// === Camera ===
+ 	cam := w.NewEntity()
+ 	camComp := &ecs.Camera{X: 100, Y: 100, Scale: 1.5, Target: ship}
+ 	cam.Add(camComp)
+ 	fmt.Printf("[SCENE] ✅ Camera entity created (ID %d) → %+v\n", cam.ID, *camComp)
+ 
+ 	// === Planet ===
+ 	planet := w.NewEntity()
+ 	planet.Add(&ecs.Position{X: 350, Y: 180})
+ 	planetImg := gfx.LoadImage("assets/entities/planet.png")
+ 	planet.Add(&ecs.Sprite{Image: planetImg, Width: 128, Height: 128})
+ 	fmt.Printf("[SCENE] ✅ Planet entity created (ID %d)\n", planet.ID)
+ }
+ 
+-
+ func (s *Scene) Update(w *ecs.World) {}
+ 
+ func (s *Scene) Draw(w *ecs.World, screen *ebiten.Image) {
+ 	// ✅ Proper background fill
+ 	screen.Fill(color.RGBA{0, 0, 32, 255})
+ }
+ 
+ func (s *Scene) Unload(w *ecs.World) {
+ 	fmt.Println("[SCENE] Unloading: Space")
+ }
+-
+diff --git a/engine/systems/spawn/system.go b/engine/systems/spawn/system.go
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..1ea6699d028f475c84e1187981933d043b60a646 100644
+--- a/engine/systems/spawn/system.go
++++ b/engine/systems/spawn/system.go
+@@ -0,0 +1,3 @@
++package spawn
++
++// Placeholder package to keep go tooling happy until the spawn system lands.
+diff --git a/engine/world/generator.go b/engine/world/generator.go
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..361e787479d6dafc4227cb59301f6b12ff622d7e 100644
+--- a/engine/world/generator.go
++++ b/engine/world/generator.go
+@@ -0,0 +1,3 @@
++package world
++
++// Placeholder for future world-generation routines.
+diff --git a/engine/world/init.go b/engine/world/init.go
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..16c464c332388a82ad11986625231fa00e3e6c79 100644
+--- a/engine/world/init.go
++++ b/engine/world/init.go
+@@ -0,0 +1,3 @@
++package world
++
++// TODO: implement world bootstrap wiring here.
+

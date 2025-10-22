@@ -4,6 +4,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"rp-go/engine/data"
 	"rp-go/engine/ecs"
+	"rp-go/engine/events"
 	"rp-go/engine/scenes/space"
 	"rp-go/engine/systems/camera"
 	"rp-go/engine/systems/debug"
@@ -22,6 +23,10 @@ func NewGameWorld() *GameWorld {
 	cfg := data.LoadRenderConfig("engine/data/render_config.json")
 	w := ecs.NewWorld()
 
+	// Wire up the typed event bus so systems can coordinate without
+	// direct dependencies. It gets flushed at the end of every update.
+	w.EventBus = events.NewBus()
+
 	// ✅ Scene manager FIRST — it creates entities (ship, camera, planet)
 	sm := &scene.Manager{}
 	w.AddSystem(sm)
@@ -39,6 +44,11 @@ func NewGameWorld() *GameWorld {
 	return &GameWorld{World: w, Config: cfg}
 }
 
-func (g *GameWorld) Update() { g.World.Update() }
-func (g *GameWorld) Draw(screen *ebiten.Image) { g.World.Draw(screen) }
+func (g *GameWorld) Update() {
+	g.World.Update()
 
+	if bus, ok := g.World.EventBus.(*events.TypedBus); ok && bus != nil {
+		bus.Flush()
+	}
+}
+func (g *GameWorld) Draw(screen *ebiten.Image) { g.World.Draw(screen) }

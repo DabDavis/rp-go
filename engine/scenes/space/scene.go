@@ -21,6 +21,12 @@ func (s *Scene) Init(w *ecs.World) {
 
 	fmt.Println("[SCENE] Initializing: Space")
 
+	// Warm the texture cache so the first frame doesn't block on disk IO.
+	gfx.PreloadImages(
+		"assets/entities/ship.png",
+		"assets/entities/planet.png",
+	)
+
 	// === Player Ship ===
 	ship := w.NewEntity()
 	ship.Add(&ecs.Actor{
@@ -49,7 +55,6 @@ func (s *Scene) Init(w *ecs.World) {
 	fmt.Printf("[SCENE] ✅ Planet entity created (ID %d)\n", planet.ID)
 }
 
-
 func (s *Scene) Update(w *ecs.World) {}
 
 func (s *Scene) Draw(w *ecs.World, screen *ebiten.Image) {
@@ -60,4 +65,3 @@ func (s *Scene) Draw(w *ecs.World, screen *ebiten.Image) {
 func (s *Scene) Unload(w *ecs.World) {
 	fmt.Println("[SCENE] Unloading: Space")
 }
-
