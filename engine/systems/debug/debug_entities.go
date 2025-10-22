@@ -9,6 +9,7 @@ import (
 	"rp-go/engine/platform"
 )
 
+// DrawEntityDiagnostics overlays basic per-entity info.
 func DrawEntityDiagnostics(w *ecs.World, screen *platform.Image, frame int) {
 	y := 100
 
@@ -19,14 +20,13 @@ func DrawEntityDiagnostics(w *ecs.World, screen *platform.Image, frame int) {
 			continue
 		}
 
-		imgW := float64(sprite.Texture.Bounds().Dx())
-		imgH := float64(sprite.Texture.Bounds().Dy())
-		playerScale := float64(sprite.Width) / imgW
-		totalScale := playerScale // (cam.Scale handled in render system)
+		imgW := float64(sprite.Image.Bounds().Dx())
+		imgH := float64(sprite.Image.Bounds().Dy())
+		spriteScale := float64(sprite.Width) / imgW
 
 		entityInfo := fmt.Sprintf(
 			"Entity %d | World(%.1f, %.1f) | Sprite %.0fx%.0f | Scale: %.2f",
-			e.ID, pos.X, pos.Y, imgW, imgH, totalScale,
+			e.ID, pos.X, pos.Y, imgW, imgH, spriteScale,
 		)
 
 		platform.DrawText(screen, entityInfo, basicfont.Face7x13, 10, y, color.RGBA{180, 220, 255, 255})

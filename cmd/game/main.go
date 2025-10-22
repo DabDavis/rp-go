@@ -58,11 +58,27 @@ func (g *Game) Draw(screen *platform.Image) {
 		screen.DrawImage(g.offscreen, op)
 	}
 
-	for _, sys := range w.Systems {
-		if overlay, ok := sys.(ecs.OverlaySystem); ok {
-			overlay.DrawOverlay(w, screen)
-		}
-	}
+	// Composite offscreen to window, applying zoom & rotation
+
+	// ✅ Composite offscreen to window, applying zoom & rotation
+	op := platform.NewDrawImageOptions()
+	op.SetFilter(platform.FilterNearest)
+
+	// Apply camera scale and rotation
+	op.Scale(cam.Scale, cam.Scale)
+	op.Rotate(cam.Rotation) // rotation placeholder (0 by default)
+
+	// Center on screen
+	windowW := float64(cfg.Window.Width)
+	windowH := float64(cfg.Window.Height)
+	offW := float64(cfg.Viewport.Width)
+	offH := float64(cfg.Viewport.Height)
+	op.Translate(
+		windowW/2-offW*cam.Scale/2,
+		windowH/2-offH*cam.Scale/2,
+	)
+
+	screen.DrawImage(g.offscreen, op)
 }
 
 func (g *Game) Layout(outW, outH int) (int, int) {
@@ -90,6 +106,18 @@ func main() {
 			*frames = v
 		}
 	}
+
+	if *headless {
+		if err := platform.RunHeadless(game, *frames, cfg.Viewport.Width, cfg.Viewport.Height); err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Headless run complete (%d frames)\n", *frames)
+		return
+	}
+
+	platform.SetWindowSize(cfg.Window.Width, cfg.Window.Height)
+	platform.SetWindowTitle("rp-go: ECS Camera Prototype")
+
 
 	if *headless {
 		if err := platform.RunHeadless(game, *frames, cfg.Viewport.Width, cfg.Viewport.Height); err != nil {

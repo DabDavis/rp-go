@@ -67,7 +67,7 @@ func (s *System) Update(w *ecs.World) {
 		return
 	}
 
-	// One-time wiring for zoom events.
+	// Subscribe once for camera zoom events.
 	if !s.subscribed {
 		if bus, ok := w.EventBus.(*events.TypedBus); ok && bus != nil {
 			events.Subscribe(bus, func(ev events.CameraZoomEvent) {
@@ -77,7 +77,7 @@ func (s *System) Update(w *ecs.World) {
 		}
 	}
 
-	// Ensure the camera carries sane zoom limits and defaults.
+	// Enforce sane zoom defaults.
 	if cam.MinScale <= 0 {
 		cam.MinScale = s.cfg.MinScale
 	}
@@ -96,8 +96,9 @@ func (s *System) Update(w *ecs.World) {
 		cam.TargetScale = clamp(cam.TargetScale, cam.MinScale, cam.MaxScale)
 	}
 
-	// Handle zoom input (keyboard + mouse wheel).
+	// Handle zoom input (keyboard + mouse wheel)
 	zoomDelta := 0.0
+
 	if platform.IsKeyJustPressed(platform.KeyMinus) || platform.IsKeyJustPressed(platform.KeyKPSubtract) {
 		zoomDelta -= s.cfg.ZoomStep
 	}
@@ -107,10 +108,11 @@ func (s *System) Update(w *ecs.World) {
 	if platform.IsKeyJustPressed(platform.Key0) || platform.IsKeyJustPressed(platform.KeyKP0) {
 		cam.TargetScale = clamp(cam.DefaultScale, cam.MinScale, cam.MaxScale)
 	}
-	_, wheelY := platform.Wheel()
-	if wheelY != 0 {
+
+	if _, wheelY := platform.Wheel(); wheelY != 0 {
 		zoomDelta += wheelY * s.cfg.ZoomStep
 	}
+
 	if zoomDelta != 0 {
 		cam.TargetScale = clamp(cam.TargetScale+zoomDelta, cam.MinScale, cam.MaxScale)
 	}
@@ -152,6 +154,16 @@ func (s *System) Update(w *ecs.World) {
 }
 
 func (s *System) Draw(*ecs.World, *platform.Image) {}
+
+func clamp(v, min, max float64) float64 {
+	if v < min {
+		return min
+	}
+	if v > max {
+		return max
+	}
+	return v
+}
 
 func clamp(v, min, max float64) float64 {
 	if v < min {

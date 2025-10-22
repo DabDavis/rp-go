@@ -10,25 +10,13 @@ import (
 	"rp-go/engine/platform"
 )
 
-type System struct {
-	overlayText string
-}
+// System draws on-screen diagnostic overlays (FPS, entity count, camera info).
+type System struct{}
 
 func (s *System) Update(*ecs.World) {}
 
+// Draw overlays diagnostic info on the current frame.
 func (s *System) Draw(w *ecs.World, screen *platform.Image) {
-	DrawDebugGrid(w, screen)
-	s.overlayText = buildOverlay(w)
-}
-
-func (s *System) DrawOverlay(w *ecs.World, screen *platform.Image) {
-	if s.overlayText == "" {
-		s.overlayText = buildOverlay(w)
-	}
-	platform.DrawText(screen, s.overlayText, basicfont.Face7x13, 10, 20, color.White)
-}
-
-func buildOverlay(w *ecs.World) string {
 	var cam *ecs.Camera
 	for _, e := range w.Entities {
 		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
@@ -38,7 +26,7 @@ func buildOverlay(w *ecs.World) string {
 	}
 
 	var builder strings.Builder
-	fmt.Fprintf(&builder, "FPS: %.0f\nEntities: %d", platform.ActualFPS(), len(w.Entities))
+	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", platform.ActualFPS(), len(w.Entities)))
 
 	if cam != nil {
 		targetScale := cam.TargetScale
@@ -59,12 +47,15 @@ func buildOverlay(w *ecs.World) string {
 		}
 
 		builder.WriteString("\n")
-		fmt.Fprintf(&builder, "Cam: (%.1f, %.1f)\n", cam.X, cam.Y)
-		fmt.Fprintf(&builder, "Rotation: %.1f deg\n", cam.Rotation*180/3.14159)
-		fmt.Fprintf(&builder, "Scale: %.2f -> %.2f\n", cam.Scale, targetScale)
-		fmt.Fprintf(&builder, "Bounds: %.2f - %.2f\n", minScale, maxScale)
-		fmt.Fprintf(&builder, "Default Scale: %.2f", defaultScale)
+		builder.WriteString(fmt.Sprintf("Cam: (%.1f, %.1f)\n", cam.X, cam.Y))
+		builder.WriteString(fmt.Sprintf("Rotation: %.1f°\n", cam.Rotation*180/3.14159))
+		builder.WriteString(fmt.Sprintf("Scale: %.2f → %.2f\n", cam.Scale, targetScale))
+		builder.WriteString(fmt.Sprintf("Bounds: %.2f – %.2f\n", minScale, maxScale))
+		builder.WriteString(fmt.Sprintf("Default Scale: %.2f", defaultScale))
 	}
+
+	platform.DrawText(screen, builder.String(), basicfont.Face7x13, 10, 20, color.White)
+}
 
 	return builder.String()
 }

@@ -12,6 +12,7 @@ type System struct{}
 
 func (s *System) Update(*ecs.World) {}
 
+// Draw renders all entities with Position + Sprite components using the active Camera.
 func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	var cam *ecs.Camera
 	for _, e := range w.Entities {
@@ -21,7 +22,7 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		}
 	}
 	if cam == nil {
-		fmt.Println("[RENDER] No camera found")
+		fmt.Println("[RENDER] ⚠ No camera found")
 		return
 	}
 
@@ -56,7 +57,7 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	}
 
 	if drawn == 0 {
-		fmt.Println("[RENDER] No sprites drawn this frame")
+		fmt.Println("[RENDER] ⚠ No sprites drawn this frame")
 	} else {
 		fmt.Printf("[RENDER] Drew %d entities\n", drawn)
 	}
