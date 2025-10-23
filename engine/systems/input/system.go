@@ -5,6 +5,7 @@ import (
 
 	"rp-go/engine/ecs"
 	"rp-go/engine/platform"
+	"rp-go/engine/systems/devconsole"
 )
 
 type System struct{}
@@ -14,6 +15,15 @@ const moveSpeed = 3.0
 
 func (s *System) Update(w *ecs.World) {
 	for _, e := range w.Entities {
+		controller, hasController := e.Get("PlayerInput").(*ecs.PlayerInput)
+		if !hasController || controller == nil || !controller.Enabled {
+			continue
+		}
+
+		if devconsole.IsOpen() {
+			continue
+		}
+
 		v, ok := e.Get("Velocity").(*ecs.Velocity)
 		if !ok {
 			continue

@@ -35,7 +35,7 @@ func NewWorld() *World {
 	return &World{
 		drawBuckets:   make(map[DrawLayer][]drawEntry),
 		worldLayers:   []DrawLayer{LayerBackground, LayerWorld, LayerForeground},
-		overlayLayers: []DrawLayer{LayerHUD, LayerDebug},
+		overlayLayers: []DrawLayer{LayerHUD, LayerEntityList, LayerDebug, LayerConsole},
 	}
 }
 
@@ -76,6 +76,32 @@ func (w *World) AddSystem(s System) {
 func (w *World) Update() {
 	for _, entry := range w.systemEntries {
 		entry.system.Update(w)
+	}
+}
+
+// RemoveEntity removes the specified entity from the world immediately.
+func (w *World) RemoveEntity(target *Entity) {
+	if w == nil || target == nil {
+		return
+	}
+	for i, entity := range w.Entities {
+		if entity == target {
+			w.Entities = append(w.Entities[:i], w.Entities[i+1:]...)
+			break
+		}
+	}
+}
+
+// RemoveEntityByID removes the entity that matches the provided ID.
+func (w *World) RemoveEntityByID(id EntityID) {
+	if w == nil {
+		return
+	}
+	for _, entity := range w.Entities {
+		if entity != nil && entity.ID == id {
+			w.RemoveEntity(entity)
+			return
+		}
 	}
 }
 

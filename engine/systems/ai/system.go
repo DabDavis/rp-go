@@ -12,9 +12,17 @@ import (
 
 const waypointTolerance = 4.0
 
+// ActorLookup exposes indexed queries over actor entities.
+type ActorLookup interface {
+	FindByID(id string) (*ecs.Entity, bool)
+	FindByArchetype(archetype string) []*ecs.Entity
+	FindByTemplatePrefix(prefix string) []*ecs.Entity
+}
+
 // System drives AI-controlled actors each frame.
 type System struct {
-	rng *rand.Rand
+	rng    *rand.Rand
+	lookup ActorLookup
 }
 
 // NewSystem constructs an AI system with its own random source.
@@ -26,6 +34,12 @@ func (s *System) ensureRNG() {
 	if s.rng == nil {
 		s.rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
+}
+
+// SetActorLookup shares the actor registry so the AI can resolve targets
+// without iterating over every entity in the world each frame.
+func (s *System) SetActorLookup(lookup ActorLookup) {
+	s.lookup = lookup
 }
 
 func (s *System) Update(w *ecs.World) {
@@ -75,7 +89,7 @@ func (s *System) applyFollow(w *ecs.World, ai *ecs.AIController, pos *ecs.Positi
 		return false
 	}
 
-	targetPos, ok := findTargetPosition(w, cfg.Target)
+	targetPos, ok := s.findTargetPosition(w, cfg.Target)
 	if !ok {
 		return false
 	}
@@ -90,15 +104,34 @@ func (s *System) applyFollow(w *ecs.World, ai *ecs.AIController, pos *ecs.Positi
 	if minDist <= 0 {
 		minDist = 1
 	}
+
 	if dist <= minDist {
+		vel.VX, vel.VY = 0, 0
 		return true
 	}
 
+	maxDist := cfg.MaxDistance
+	if maxDist > 0 && maxDist < minDist {
+		maxDist = minDist
+	}
+
 	speed := ai.SpeedFor(cfg.Speed)
+	if maxDist > minDist && dist < maxDist {
+		factor := (dist - minDist) / (maxDist - minDist)
+		if factor < 0 {
+			factor = 0
+		}
+		speed *= factor
+	}
 	if dist < speed {
 		speed = dist
 	}
 	if dist == 0 {
+		vel.VX, vel.VY = 0, 0
+		return true
+	}
+
+	if speed <= 0 {
 		vel.VX, vel.VY = 0, 0
 		return true
 	}
@@ -114,7 +147,7 @@ func (s *System) applyPursue(w *ecs.World, ai *ecs.AIController, pos *ecs.Positi
 		return false
 	}
 
-	targetPos, ok := findTargetPosition(w, cfg.Target)
+	targetPos, ok := s.findTargetPosition(w, cfg.Target)
 	if !ok {
 		return false
 	}
@@ -146,7 +179,7 @@ func (s *System) applyRetreat(w *ecs.World, ai *ecs.AIController, pos *ecs.Posit
 		return false
 	}
 
-	targetPos, ok := findTargetPosition(w, cfg.Target)
+	targetPos, ok := s.findTargetPosition(w, cfg.Target)
 	if !ok {
 		return false
 	}
@@ -307,7 +340,46 @@ func (s *System) advancePath(state *ecs.AIPathState, variant string, total int) 
 	}
 }
 
-func findTargetPosition(w *ecs.World, target string) (*ecs.Position, bool) {
+func (s *System) findTargetPosition(w *ecs.World, target string) (*ecs.Position, bool) {
+	if target == "" {
+		return nil, false
+	}
+
+	if pos, ok := s.lookupTargetPosition(target); ok {
+		return pos, true
+	}
+
+	return fallbackFindTargetPosition(w, target)
+}
+
+func (s *System) lookupTargetPosition(target string) (*ecs.Position, bool) {
+	if s.lookup == nil {
+		return nil, false
+	}
+
+	var candidates []*ecs.Entity
+	switch {
+	case strings.HasPrefix(target, "archetype:"):
+		archetype := strings.TrimPrefix(target, "archetype:")
+		candidates = s.lookup.FindByArchetype(archetype)
+	case strings.HasPrefix(target, "template:"):
+		prefix := strings.TrimPrefix(target, "template:")
+		candidates = s.lookup.FindByTemplatePrefix(prefix)
+	default:
+		if entity, ok := s.lookup.FindByID(target); ok && entity != nil {
+			candidates = []*ecs.Entity{entity}
+		}
+	}
+
+	for _, entity := range candidates {
+		if pos, ok := entity.Get("Position").(*ecs.Position); ok {
+			return pos, true
+		}
+	}
+	return nil, false
+}
+
+func fallbackFindTargetPosition(w *ecs.World, target string) (*ecs.Position, bool) {
 	if w == nil || target == "" {
 		return nil, false
 	}

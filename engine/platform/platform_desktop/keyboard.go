@@ -26,7 +26,13 @@ const (
 	KeyKP0        Key = ebiten.KeyKP0
 	KeyKPAdd      Key = ebiten.KeyKPAdd
 	KeyKPSubtract Key = ebiten.KeyKPSubtract
+	KeyEnter      Key = ebiten.KeyEnter
+	KeyEscape     Key = ebiten.KeyEscape
+	KeyBackspace  Key = ebiten.KeyBackspace
+	KeyF12        Key = ebiten.KeyF12
 )
 
 func IsKeyPressed(k Key) bool     { return ebiten.IsKeyPressed(k) }
 func IsKeyJustPressed(k Key) bool { return inpututil.IsKeyJustPressed(k) }
+
+func InputChars() []rune { return ebiten.InputChars() }

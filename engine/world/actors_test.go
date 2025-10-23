@@ -41,3 +41,31 @@ func TestActorCreatorUniqueIDs(t *testing.T) {
 		}
 	}
 }
+
+func TestActorCreatorAddsAIController(t *testing.T) {
+	db := data.ActorDatabase{Actors: []data.ActorTemplate{
+		{
+			Name:      "ai-test",
+			Archetype: "enemy",
+			AI: &data.ActorAITemplate{
+				Pursue: &data.ActorAIPursue{Target: "player", Speed: 3.5},
+			},
+		},
+	}}
+
+	creator := NewActorCreator(db)
+	world := ecs.NewWorld()
+
+	entity, err := creator.Spawn(world, "ai-test", ecs.Position{})
+	if err != nil {
+		t.Fatalf("spawn failed: %v", err)
+	}
+
+	controller, ok := entity.Get("AIController").(*ecs.AIController)
+	if !ok || controller == nil {
+		t.Fatalf("expected AIController component on spawned entity")
+	}
+	if controller.Pursue == nil || controller.Pursue.Target != "player" {
+		t.Fatalf("expected pursue behavior to be configured on controller, got %+v", controller.Pursue)
+	}
+}
