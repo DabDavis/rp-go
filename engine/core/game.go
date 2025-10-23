@@ -19,7 +19,6 @@ import (
 	"rp-go/engine/systems/movement"
 	"rp-go/engine/systems/render"
 	"rp-go/engine/systems/scene"
-	"rp-go/engine/systems/windowmgr"
 )
 
 // GameWorld bundles the ECS world and runtime configuration.
@@ -68,14 +67,10 @@ func NewGameWorld() *GameWorld {
 
 	/* --------------------------- Rendering Phase --------------------------- */
 	// These systems draw world-space and overlay visuals.
-	hudSystem := hud.NewSystem()
-	windowSystem := windowmgr.NewSystem()
-
 	renderingSystems := []ecs.System{
 		&background.System{}, // 🌌 Parallax background stars
 		&render.System{},     // World-space sprite rendering
-		hudSystem,            // Maintains reusable HUD window content
-		windowSystem,         // Renders modular UI windows (HUD, maps, chat, etc.)
+		&hud.System{},        // Heads-up display (controls + player stats)
 		entityListSystem,     // Entity overlay (actors + positions)
 		&debug.System{},      // Diagnostic overlay (FPS, entities, etc.)
 		consoleSystem,        // Developer console overlay (F12 toggle)
