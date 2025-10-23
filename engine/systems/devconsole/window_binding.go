@@ -2,15 +2,10 @@ package devconsole
 
 import (
 	"rp-go/engine/ecs"
-	"rp-go/engine/platform"
 	"rp-go/engine/ui/window"
 )
 
-const (
-	consoleMargin = 16
-)
-
-func (s *ConsoleState) ensureWindow(world *ecs.World) {
+func (s *ConsoleState) ensureWindow(world *ecs.World, cfg Config) {
 	if s == nil || world == nil {
 		return
 	}
@@ -19,7 +14,7 @@ func (s *ConsoleState) ensureWindow(world *ecs.World) {
 	}
 
 	content := newConsoleWindowContent(s)
-	bounds := window.Bounds{X: consoleMargin, Y: consoleMargin, Width: 320, Height: 240}
+	bounds := window.Bounds{X: cfg.Margin, Y: cfg.Margin, Width: cfg.MinWidth, Height: cfg.MinHeight}
 	component := window.NewComponent("console.dev", "Developer Console", bounds, content)
 	component.Layer = ecs.LayerConsole
 	component.Visible = false
@@ -42,35 +37,49 @@ func (s *ConsoleState) syncWindowVisibility() {
 	s.windowComponent.Visible = s.Open
 }
 
-func (s *ConsoleState) layoutWindow(screen *platform.Image) {
-	if s == nil || s.windowComponent == nil || screen == nil {
+func (s *ConsoleState) applyLayout(cfg Config) {
+	if s == nil || s.windowComponent == nil {
 		return
 	}
-	bounds := screen.Bounds()
-	width := bounds.Dx()
-	height := bounds.Dy()
-	if width <= 0 || height <= 0 {
-		return
+	margin := cfg.Margin
+	if margin < 0 {
+		margin = 0
+	}
+	availableWidth := cfg.ViewportWidth - margin*2
+	if availableWidth <= 0 {
+		availableWidth = cfg.ViewportWidth
+	}
+	width := availableWidth
+	if width < cfg.MinWidth {
+		width = cfg.MinWidth
+	}
+	if cfg.ViewportWidth > 0 && width > cfg.ViewportWidth {
+		width = cfg.ViewportWidth
+	}
+	if width < 1 {
+		width = 1
 	}
 
-	windowWidth := width - consoleMargin*2
-	if windowWidth < 360 {
-		windowWidth = 360
+	height := int(float64(cfg.ViewportHeight) * cfg.HeightRatio)
+	if height < cfg.MinHeight {
+		height = cfg.MinHeight
 	}
-	windowHeight := height / 3
-	if windowHeight < 180 {
-		windowHeight = 180
+	if cfg.ViewportHeight > 0 && height > cfg.ViewportHeight {
+		height = cfg.ViewportHeight
 	}
-	windowY := height - windowHeight - consoleMargin
-	if windowY < consoleMargin {
-		windowY = consoleMargin
+	if height < 1 {
+		height = 1
 	}
 
+	y := cfg.ViewportHeight - height - margin
+	if y < margin {
+		y = margin
+	}
 	s.windowComponent.Bounds = window.Bounds{
-		X:      consoleMargin,
-		Y:      windowY,
-		Width:  windowWidth,
-		Height: windowHeight,
+		X:      margin,
+		Y:      y,
+		Width:  width,
+		Height: height,
 	}
 }
 

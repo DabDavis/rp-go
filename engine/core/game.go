@@ -10,7 +10,6 @@ import (
 	"rp-go/engine/systems/actor"
 	"rp-go/engine/systems/ai"
 	"rp-go/engine/systems/background"
-	"rp-go/engine/systems/windowmgr"
 	"rp-go/engine/systems/camera"
 	"rp-go/engine/systems/debug"
 	"rp-go/engine/systems/devconsole"
@@ -20,6 +19,7 @@ import (
 	"rp-go/engine/systems/movement"
 	"rp-go/engine/systems/render"
 	"rp-go/engine/systems/scene"
+	"rp-go/engine/systems/windowmgr"
 )
 
 // GameWorld bundles the ECS world and runtime configuration.
@@ -47,7 +47,16 @@ func NewGameWorld() *GameWorld {
 	aiSystem.SetActorLookup(actorSystem.Registry())
 
 	// Developer console + overlays share the actor registry
-	consoleSystem := devconsole.NewSystem(actorSystem.Registry())
+	consoleSystem := devconsole.NewSystem(actorSystem.Registry(), devconsole.Config{
+		Margin:         16,
+		ViewportWidth:  cfg.Viewport.Width,
+		ViewportHeight: cfg.Viewport.Height,
+	})
+	debugSystem := debug.NewSystem(debug.Config{
+		Margin:         16,
+		ViewportWidth:  cfg.Viewport.Width,
+		ViewportHeight: cfg.Viewport.Height,
+	})
 	entityListSystem := entitylist.NewSystem(actorSystem.Registry())
 
 	/* -------------------------- Simulation Phase --------------------------- */
@@ -68,15 +77,26 @@ func NewGameWorld() *GameWorld {
 
 	/* --------------------------- Rendering Phase --------------------------- */
 	// These systems draw world-space and overlay visuals.
+	hudSystem := hud.NewSystem()
+	windowSystem := windowmgr.NewSystem()
+	windowRenderers := []ecs.System{
+		render.NewWindowRenderer(ecs.LayerHUD),
+		render.NewWindowRenderer(ecs.LayerDebug),
+		render.NewWindowRenderer(ecs.LayerConsole),
+	}
+
 	renderingSystems := []ecs.System{
 		&background.System{}, // 🌌 Parallax background stars
 		&render.System{},     // World-space sprite rendering
-		&hud.System{},        // Heads-up display (controls + player stats)
-		entityListSystem,     // Entity overlay (actors + positions)
-		&debug.System{},      // Diagnostic overlay (FPS, entities, etc.)
-		&windowmgr.System{},
-		consoleSystem,        // Developer console overlay (F12 toggle)
+		hudSystem,            // Maintains reusable HUD window content
+		windowSystem,         // Synchronizes modular UI window state
 	}
+	renderingSystems = append(renderingSystems, windowRenderers...)
+	renderingSystems = append(renderingSystems,
+		entityListSystem, // Entity overlay (actors + positions)
+		debugSystem,      // Diagnostic overlay logic and window content
+		consoleSystem,    // Developer console overlay (F12 toggle)
+	)
 
 	/* --------------------------- System Binding ---------------------------- */
 	// Add systems in simulation phase first, then rendering phase.

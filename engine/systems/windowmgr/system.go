@@ -1,150 +1,133 @@
 package windowmgr
 
 import (
-	"image/color"
 	"sort"
 
-	"golang.org/x/image/font/basicfont"
-
 	"rp-go/engine/ecs"
-	"rp-go/engine/platform"
 	"rp-go/engine/ui/window"
 )
 
-// System draws reusable UI windows registered as ECS components.
+// System scans the ECS world for window components and maintains the shared
+// registry consumed by rendering systems. It performs no rendering directly.
 type System struct {
-	layers []ecs.DrawLayer
+	registry *Registry
 }
 
-// NewSystem creates a window manager that draws HUD and Console overlays.
+var globalRegistry = NewRegistry()
+
+// NewSystem constructs a window manager bound to the global registry.
 func NewSystem() *System {
-	return &System{
-		layers: []ecs.DrawLayer{
-			ecs.LayerHUD,
-			ecs.LayerConsole,
-		},
-	}
+	return &System{registry: globalRegistry}
 }
 
-// Layer reports the nominal ECS layer this system participates in.
-func (s *System) Layer() ecs.DrawLayer { return ecs.LayerHUD }
+// SharedRegistry exposes the global window registry for read-only usage.
+func SharedRegistry() *Registry {
+	return globalRegistry
+}
 
-// Update is currently a no-op; windows are purely rendered components.
-func (s *System) Update(*ecs.World) {}
+// Update rebuilds the registry from the current set of entities each frame.
+func (s *System) Update(world *ecs.World) {
+	if world == nil {
+		return
+	}
+	if s.registry == nil {
+		s.registry = globalRegistry
+	}
 
-// Draw renders all visible windows for the handled layers and updates the shared registry.
-func (s *System) Draw(world *ecs.World, screen *platform.Image) {
-	if world == nil || screen == nil {
+	manager := world.EntitiesManager()
+	if manager == nil {
 		return
 	}
 
-	reg := SharedRegistry()
-	reg.Clear()
+	s.registry.Reset()
+	manager.ForEach(func(e *ecs.Entity) {
+		comp, _ := e.Get("Window").(*window.Component)
+		if comp == nil || !comp.Visible {
+			return
+		}
+		s.registry.Add(comp)
+	})
+	s.registry.Finalize()
+}
 
-	for _, win := range s.collectWindows(world) {
-		reg.Add(win.Layer, win)
-		s.drawWindow(world, screen, win)
+// Registry maintains ordered windows grouped by draw layer.
+type Registry struct {
+	layers     map[ecs.DrawLayer][]*window.Component
+	layerOrder []ecs.DrawLayer
+}
+
+// NewRegistry creates an empty registry instance.
+func NewRegistry() *Registry {
+	return &Registry{
+		layers:     make(map[ecs.DrawLayer][]*window.Component),
+		layerOrder: make([]ecs.DrawLayer, 0, 8),
 	}
 }
 
-func (s *System) collectWindows(world *ecs.World) []*window.Component {
-	if world == nil {
+// Reset clears all tracked windows while preserving allocated slices.
+func (r *Registry) Reset() {
+	if r == nil {
+		return
+	}
+	for key := range r.layers {
+		slice := r.layers[key]
+		for i := range slice {
+			slice[i] = nil
+		}
+		r.layers[key] = r.layers[key][:0]
+	}
+	r.layerOrder = r.layerOrder[:0]
+}
+
+// Add registers a window component for later rendering.
+func (r *Registry) Add(comp *window.Component) {
+	if r == nil || comp == nil {
+		return
+	}
+	layer := comp.Layer
+	if _, ok := r.layers[layer]; !ok {
+		r.layers[layer] = make([]*window.Component, 0, 4)
+		r.layerOrder = append(r.layerOrder, layer)
+	}
+	r.layers[layer] = append(r.layers[layer], comp)
+}
+
+// Finalize sorts windows within each layer by order/id for stable rendering.
+func (r *Registry) Finalize() {
+	if r == nil {
+		return
+	}
+	for layer, windows := range r.layers {
+		sort.SliceStable(windows, func(i, j int) bool {
+			if windows[i].Order == windows[j].Order {
+				return windows[i].ID < windows[j].ID
+			}
+			return windows[i].Order < windows[j].Order
+		})
+		r.layers[layer] = windows
+	}
+}
+
+// Layers returns the list of layers that currently contain windows.
+func (r *Registry) Layers() []ecs.DrawLayer {
+	if r == nil {
 		return nil
 	}
-
-	var windows []*window.Component
-	for _, e := range world.Entities {
-		if e == nil {
-			continue
-		}
-		comp, _ := e.Get("Window").(*window.Component)
-		if comp == nil || !comp.Visible || !s.handlesLayer(comp.Layer) {
-			continue
-		}
-		windows = append(windows, comp)
-	}
-
-	sort.SliceStable(windows, func(i, j int) bool {
-		if windows[i].Order == windows[j].Order {
-			return windows[i].ID < windows[j].ID
-		}
-		return windows[i].Order < windows[j].Order
-	})
-
-	return windows
+	result := make([]ecs.DrawLayer, len(r.layerOrder))
+	copy(result, r.layerOrder)
+	return result
 }
 
-func (s *System) handlesLayer(layer ecs.DrawLayer) bool {
-	for _, l := range s.layers {
-		if layer == l {
-			return true
-		}
+// Windows returns an ordered copy of the windows for the requested layer.
+func (r *Registry) Windows(layer ecs.DrawLayer) []*window.Component {
+	if r == nil {
+		return nil
 	}
-	return false
+	src := r.layers[layer]
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]*window.Component, len(src))
+	copy(out, src)
+	return out
 }
-
-func (s *System) drawWindow(world *ecs.World, screen *platform.Image, comp *window.Component) {
-	if comp == nil {
-		return
-	}
-	b := comp.Bounds
-	if b.Width <= 0 || b.Height <= 0 {
-		return
-	}
-
-	canvas := platform.NewImage(b.Width, b.Height)
-	bg := colorOrDefault(comp.Background, color.RGBA{8, 12, 20, 200})
-	canvas.FillRect(0, 0, b.Width, b.Height, bg)
-
-	titleBarHeight := max(0, comp.TitleBarHeight)
-	if titleBarHeight > 0 {
-		header := colorOrDefault(comp.TitleBar, color.RGBA{20, 36, 80, 220})
-		canvas.FillRect(0, 0, b.Width, titleBarHeight, header)
-	}
-
-	border := colorOrDefault(comp.Border, color.RGBA{180, 210, 255, 120})
-	drawBorder(canvas, b.Width, b.Height, border)
-
-	if titleBarHeight > 0 && comp.Title != "" {
-		textColor := colorOrDefault(comp.TitleColor, color.White)
-		textX := max(8, comp.Padding)
-		baseline := max(12, titleBarHeight/2+6)
-		platform.DrawText(canvas, comp.Title, basicfont.Face7x13, textX, baseline, textColor)
-	}
-
-	if comp.Content != nil {
-		contentBounds := comp.ContentBounds()
-		if contentBounds.Width > 0 && contentBounds.Height > 0 {
-			comp.Content.Draw(world, canvas, contentBounds)
-		}
-	}
-
-	op := platform.NewDrawImageOptions()
-	op.Translate(float64(b.X), float64(b.Y))
-	screen.DrawImage(canvas, op)
-}
-
-func colorOrDefault(c color.Color, fallback color.Color) color.Color {
-	if c == nil {
-		return fallback
-	}
-	return c
-}
-
-func drawBorder(img *platform.Image, width, height int, border color.Color) {
-	if img == nil || width <= 0 || height <= 0 {
-		return
-	}
-	img.FillRect(0, 0, width, 1, border)
-	img.FillRect(0, height-1, width, 1, border)
-	img.FillRect(0, 0, 1, height, border)
-	img.FillRect(width-1, 0, 1, height, border)
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-

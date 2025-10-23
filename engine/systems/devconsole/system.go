@@ -2,40 +2,61 @@ package devconsole
 
 import (
 	"rp-go/engine/ecs"
-	"rp-go/engine/platform"
 	"rp-go/engine/systems/actor"
 )
 
-// System is the ECS component that integrates the console
-// with the engine’s Update and Draw lifecycle.
+// Config controls layout of the console window.
+type Config struct {
+	Margin         int
+	ViewportWidth  int
+	ViewportHeight int
+	HeightRatio    float64
+	MinWidth       int
+	MinHeight      int
+}
+
+// normalize fills zero-valued fields with defaults.
+func (c *Config) normalize() {
+	if c.Margin <= 0 {
+		c.Margin = 16
+	}
+	if c.ViewportWidth <= 0 {
+		c.ViewportWidth = 640
+	}
+	if c.ViewportHeight <= 0 {
+		c.ViewportHeight = 360
+	}
+	if c.HeightRatio <= 0 {
+		c.HeightRatio = 0.33
+	}
+	if c.MinWidth <= 0 {
+		c.MinWidth = 360
+	}
+	if c.MinHeight <= 0 {
+		c.MinHeight = 180
+	}
+}
+
+// System integrates the developer console into the ECS lifecycle.
 type System struct {
 	state *ConsoleState
+	cfg   Config
 }
 
-// NewSystem initializes a new developer console bound to
-// the shared actor registry.
-func NewSystem(reg *actor.Registry) *System {
+// NewSystem initializes a new developer console bound to the shared actor registry.
+func NewSystem(reg *actor.Registry, cfg Config) *System {
+	cfg.normalize()
 	cs := NewConsoleState(reg)
-	return &System{state: cs}
+	return &System{state: cs, cfg: cfg}
 }
 
-// Layer ensures the console renders last in the overlay stack.
-func (s *System) Layer() ecs.DrawLayer { return ecs.LayerConsole }
-
-// Update handles input and command execution each frame.
+// Update handles input, window binding, and layout.
 func (s *System) Update(w *ecs.World) {
-	if s.state == nil {
+	if s == nil || s.state == nil {
 		return
 	}
-	s.state.ensureWindow(w)
+	s.state.ensureWindow(w, s.cfg)
 	s.state.UpdateInput(w)
 	s.state.syncWindowVisibility()
-}
-
-// Draw renders the console overlay if active.
-func (s *System) Draw(w *ecs.World, screen *platform.Image) {
-	if s.state == nil {
-		return
-	}
-	s.state.layoutWindow(screen)
+	s.state.applyLayout(s.cfg)
 }
