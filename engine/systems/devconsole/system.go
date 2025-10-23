@@ -338,7 +338,7 @@ func (s *System) findActorByID(w *ecs.World, id string) *ecs.Entity {
 func (s *System) collectActors(w *ecs.World) []string {
 	var entities []*ecs.Entity
 	if s.actorRegistry != nil {
-		entities = s.actorRegistry.Entities()
+		entities = s.actorRegistry.All()
 	}
 	if len(entities) == 0 {
 		entities = make([]*ecs.Entity, 0, len(w.Entities))

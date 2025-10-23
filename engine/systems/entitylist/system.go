@@ -58,7 +58,7 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 func (s *System) collectEntries(w *ecs.World) []string {
 	var entities []*ecs.Entity
 	if s.registry != nil {
-		entities = s.registry.Entities()
+		entities = s.registry.All()
 	}
 	if len(entities) == 0 {
 		return nil
