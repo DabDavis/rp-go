@@ -4,18 +4,18 @@ Game engine initialized with a modular ECS + Pub/Sub architecture.
 
 ## Testing
 
-Simulation and rendering are now fully separated, allowing the engine to run
-its logic systems without a GPU or windowing system. The platform layer ships
-with a pure Go headless implementation that satisfies the same API surface as
-the Ebiten-backed runtime, so tests can execute deterministically inside CI
-containers.
-
-The helper script automatically applies the `headless` build tag:
+The test suite exercises systems that require an active display context. When
+running in headless environments (such as CI) install `xvfb` and wrap the Go
+command with `xvfb-run` to provide a virtual framebuffer:
 
 ```bash
-./run-tests.sh            # equivalent to: go test -tags headless ./...
-./run-tests.sh ./engine/  # passes through additional go test arguments
+sudo apt-get update && sudo apt-get install -y xvfb
+./run-tests.sh
 ```
 
-You can also invoke `go test -tags headless ./...` directly if you prefer to
-manage the invocation yourself.
+`run-tests.sh` enforces the `xvfb-run` wrapper and forwards any additional flags
+to `go test` if you need to target a specific package, e.g.
+
+```bash
+./run-tests.sh ./engine/...
+```
