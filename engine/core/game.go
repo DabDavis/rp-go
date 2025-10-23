@@ -12,6 +12,8 @@ import (
 	"rp-go/engine/systems/background"
 	"rp-go/engine/systems/camera"
 	"rp-go/engine/systems/debug"
+	"rp-go/engine/systems/devconsole"
+	"rp-go/engine/systems/entitylist"
 	"rp-go/engine/systems/input"
 	"rp-go/engine/systems/movement"
 	"rp-go/engine/systems/render"
@@ -58,7 +60,9 @@ func NewGameWorld() *GameWorld {
 	renderingSystems := []ecs.System{
 		&background.System{}, // 🌌 Parallax stars
 		&render.System{},     // World-space sprites
-		&debug.System{},      // Overlay diagnostics
+		entitylist.NewSystem(actorSystem.Registry()),
+		&debug.System{},
+		consoleSystem,
 	}
 
 	// Core systems in logical update order

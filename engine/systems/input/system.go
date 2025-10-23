@@ -5,6 +5,7 @@ import (
 
 	"rp-go/engine/ecs"
 	"rp-go/engine/platform"
+	"rp-go/engine/systems/devconsole"
 )
 
 type System struct{}

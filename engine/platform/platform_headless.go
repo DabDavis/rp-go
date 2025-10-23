@@ -50,6 +50,10 @@ const (
 	KeyKP0
 	KeyKPAdd
 	KeyKPSubtract
+	KeyEnter
+	KeyEscape
+	KeyBackspace
+	KeyF12
 )
 
 type GamepadID int
@@ -160,6 +164,7 @@ func (img *Image) FillRect(x, y, w, h int, c color.Color) {
 
 func IsKeyPressed(Key) bool     { return false }
 func IsKeyJustPressed(Key) bool { return false }
+func InputChars() []rune        { return nil }
 
 func GamepadIDs() []GamepadID { return nil }
 
