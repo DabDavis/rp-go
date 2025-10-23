@@ -20,10 +20,6 @@ func (s *System) Update(w *ecs.World) {
 			continue
 		}
 
-		if devconsole.IsOpen() {
-			continue
-		}
-
 		v, ok := e.Get("Velocity").(*ecs.Velocity)
 		if !ok {
 			continue
