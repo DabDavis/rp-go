@@ -30,5 +30,7 @@ const (
 	LayerWorld                       // primary world entities affected by the camera
 	LayerForeground                  // world-space effects rendered after entities
 	LayerHUD                         // overlay UI drawn in screen space
+	LayerEntityList                  // overlay list of active entities for debugging tools
 	LayerDebug                       // overlay diagnostics drawn in screen space
+	LayerConsole                     // overlay developer console drawn last
 )
