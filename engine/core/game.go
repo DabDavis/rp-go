@@ -10,6 +10,7 @@ import (
 	"rp-go/engine/systems/actor"
 	"rp-go/engine/systems/ai"
 	"rp-go/engine/systems/background"
+	"rp-go/engine/systems/windowmgr"
 	"rp-go/engine/systems/camera"
 	"rp-go/engine/systems/debug"
 	"rp-go/engine/systems/devconsole"
@@ -73,6 +74,7 @@ func NewGameWorld() *GameWorld {
 		&hud.System{},        // Heads-up display (controls + player stats)
 		entityListSystem,     // Entity overlay (actors + positions)
 		&debug.System{},      // Diagnostic overlay (FPS, entities, etc.)
+		&windowmgr.System{},
 		consoleSystem,        // Developer console overlay (F12 toggle)
 	}
 
