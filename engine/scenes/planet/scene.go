@@ -17,11 +17,15 @@ func (s *Scene) Init(w *ecs.World) {
 	s.initialized = true
 
 	var player *ecs.Entity
-	for _, e := range w.Entities {
-		if a, ok := e.Get("Actor").(*ecs.Actor); ok && a.ID == "player" {
-			player = e
-			break
-		}
+	if manager := w.EntitiesManager(); manager != nil {
+		manager.ForEach(func(e *ecs.Entity) {
+			if player != nil {
+				return
+			}
+			if a, ok := e.Get("Actor").(*ecs.Actor); ok && a.ID == "player" {
+				player = e
+			}
+		})
 	}
 
 	if player == nil {

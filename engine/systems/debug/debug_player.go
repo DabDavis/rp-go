@@ -11,13 +11,17 @@ import (
 
 func DrawPlayerInfo(w *ecs.World, screen *platform.Image) {
 	var playerPos *ecs.Position
-	for _, e := range w.Entities {
-		if e.Has("CameraTarget") {
-			if pos, ok := e.Get("Position").(*ecs.Position); ok {
-				playerPos = pos
-				break
+	if manager := w.EntitiesManager(); manager != nil {
+		manager.ForEach(func(e *ecs.Entity) {
+			if playerPos != nil {
+				return
 			}
-		}
+			if e.Has("CameraTarget") {
+				if pos, ok := e.Get("Position").(*ecs.Position); ok {
+					playerPos = pos
+				}
+			}
+		})
 	}
 	if playerPos == nil {
 		return

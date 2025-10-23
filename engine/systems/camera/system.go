@@ -45,18 +45,25 @@ func NewSystem(cfg Config) *System {
 }
 
 func (s *System) Update(w *ecs.World) {
+	if w == nil {
+		return
+	}
 	var cam *ecs.Camera
 	var target *ecs.Position
 
-	for _, e := range w.Entities {
-		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
-			cam = c
-		}
-		if e.Has("CameraTarget") {
-			if pos, ok := e.Get("Position").(*ecs.Position); ok {
-				target = pos
+	if manager := w.EntitiesManager(); manager != nil {
+		manager.ForEach(func(e *ecs.Entity) {
+			if cam == nil {
+				if c, ok := e.Get("Camera").(*ecs.Camera); ok {
+					cam = c
+				}
 			}
-		}
+			if target == nil && e.Has("CameraTarget") {
+				if pos, ok := e.Get("Position").(*ecs.Position); ok {
+					target = pos
+				}
+			}
+		})
 	}
 
 	if cam == nil || target == nil {
