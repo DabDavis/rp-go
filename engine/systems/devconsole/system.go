@@ -27,7 +27,9 @@ func (s *System) Update(w *ecs.World) {
 	if s.state == nil {
 		return
 	}
+	s.state.ensureWindow(w)
 	s.state.UpdateInput(w)
+	s.state.syncWindowVisibility()
 }
 
 // Draw renders the console overlay if active.
@@ -35,6 +37,5 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	if s.state == nil {
 		return
 	}
-	s.state.Render(w, screen)
+	s.state.layoutWindow(screen)
 }
-
