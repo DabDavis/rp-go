@@ -14,6 +14,11 @@ const moveSpeed = 3.0
 
 func (s *System) Update(w *ecs.World) {
 	for _, e := range w.Entities {
+		controller, hasController := e.Get("PlayerInput").(*ecs.PlayerInput)
+		if !hasController || controller == nil || !controller.Enabled {
+			continue
+		}
+
 		v, ok := e.Get("Velocity").(*ecs.Velocity)
 		if !ok {
 			continue

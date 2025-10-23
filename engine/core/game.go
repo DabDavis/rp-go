@@ -7,6 +7,7 @@ import (
 	"rp-go/engine/platform"
 
 	"rp-go/engine/scenes/space"
+	"rp-go/engine/systems/actor"
 	"rp-go/engine/systems/ai"
 	"rp-go/engine/systems/background"
 	"rp-go/engine/systems/camera"
@@ -36,10 +37,15 @@ func NewGameWorld() *GameWorld {
 	// headlessly inside tests or server-side simulations.
 	sceneManager := &scene.Manager{}
 
+	actorSystem := actor.NewSystem()
+	aiSystem := ai.NewSystem()
+	aiSystem.SetActorLookup(actorSystem.Registry())
+
 	simulationSystems := []ecs.System{
 		sceneManager,
+		actorSystem,
 		&input.System{},
-		ai.NewSystem(),
+		aiSystem,
 		&movement.System{},
 		camera.NewSystem(camera.Config{
 			MinScale: cfg.Viewport.MinScale,
