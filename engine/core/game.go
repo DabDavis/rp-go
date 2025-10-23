@@ -42,7 +42,6 @@ func NewGameWorld() *GameWorld {
 	actorSystem := actor.NewSystem()
 	aiSystem := ai.NewSystem()
 	aiSystem.SetActorLookup(actorSystem.Registry())
-	consoleSystem := devconsole.NewSystem(actorSystem.Registry())
 
 	simulationSystems := []ecs.System{
 		sceneManager,

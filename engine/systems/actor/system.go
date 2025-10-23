@@ -84,32 +84,6 @@ func (r *Registry) FindByTemplatePrefix(prefix string) []*ecs.Entity {
 	return matches
 }
 
-// All returns every registered actor entity sorted by actor ID.
-func (r *Registry) All() []*ecs.Entity {
-	if r == nil {
-		return nil
-	}
-	if len(r.byID) == 0 {
-		return nil
-	}
-	out := make([]*ecs.Entity, 0, len(r.byID))
-	for _, entity := range r.byID {
-		out = append(out, entity)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		ai, _ := out[i].Get("Actor").(*ecs.Actor)
-		aj, _ := out[j].Get("Actor").(*ecs.Actor)
-		if ai == nil || aj == nil {
-			return out[i].ID < out[j].ID
-		}
-		if ai.ID == aj.ID {
-			return out[i].ID < out[j].ID
-		}
-		return ai.ID < aj.ID
-	})
-	return out
-}
-
 // System keeps an index of all Actor components for other systems to query.
 type System struct {
 	registry *Registry
