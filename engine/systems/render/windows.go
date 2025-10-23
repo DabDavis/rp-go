@@ -32,7 +32,7 @@ func (r *WindowRenderer) Draw(world *ecs.World, screen *platform.Image) {
 	if screen == nil {
 		return
 	}
-	registry := windowmgr.Registry()
+	registry := windowmgr.SharedRegistry()
 	windows := registry.Windows(r.layer)
 	for _, comp := range windows {
 		drawWindow(world, screen, comp)

@@ -32,13 +32,17 @@ func (s *System) Layer() ecs.DrawLayer { return ecs.LayerHUD }
 // Update is currently a no-op; windows are purely rendered components.
 func (s *System) Update(*ecs.World) {}
 
-// Draw renders all visible windows for the handled layers.
+// Draw renders all visible windows for the handled layers and updates the shared registry.
 func (s *System) Draw(world *ecs.World, screen *platform.Image) {
 	if world == nil || screen == nil {
 		return
 	}
 
+	reg := SharedRegistry()
+	reg.Clear()
+
 	for _, win := range s.collectWindows(world) {
+		reg.Add(win.Layer, win)
 		s.drawWindow(world, screen, win)
 	}
 }
