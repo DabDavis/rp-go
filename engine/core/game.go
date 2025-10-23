@@ -7,10 +7,13 @@ import (
 	"rp-go/engine/platform"
 
 	"rp-go/engine/scenes/space"
+	"rp-go/engine/systems/actor"
 	"rp-go/engine/systems/ai"
 	"rp-go/engine/systems/background"
 	"rp-go/engine/systems/camera"
 	"rp-go/engine/systems/debug"
+	"rp-go/engine/systems/devconsole"
+	"rp-go/engine/systems/entitylist"
 	"rp-go/engine/systems/input"
 	"rp-go/engine/systems/movement"
 	"rp-go/engine/systems/render"
@@ -36,10 +39,16 @@ func NewGameWorld() *GameWorld {
 	// headlessly inside tests or server-side simulations.
 	sceneManager := &scene.Manager{}
 
+	actorSystem := actor.NewSystem()
+	aiSystem := ai.NewSystem()
+	aiSystem.SetActorLookup(actorSystem.Registry())
+	consoleSystem := devconsole.NewSystem(actorSystem.Registry())
+
 	simulationSystems := []ecs.System{
 		sceneManager,
+		actorSystem,
 		&input.System{},
-		ai.NewSystem(),
+		aiSystem,
 		&movement.System{},
 		camera.NewSystem(camera.Config{
 			MinScale: cfg.Viewport.MinScale,
@@ -52,22 +61,19 @@ func NewGameWorld() *GameWorld {
 	renderingSystems := []ecs.System{
 		&background.System{}, // 🌌 Parallax stars
 		&render.System{},     // World-space sprites
-		&debug.System{},      // Overlay diagnostics
+		entitylist.NewSystem(actorSystem.Registry()),
+		&debug.System{},
+		consoleSystem,
 	}
 
 	// Core systems in logical update order
-	w.AddSystem(&background.System{}) // 🌌 Draws parallax stars
-	w.AddSystem(&input.System{})
-	w.AddSystem(ai.NewSystem())
-	w.AddSystem(&movement.System{})
-	w.AddSystem(camera.NewSystem(camera.Config{
-		MinScale: cfg.Viewport.MinScale,
-		MaxScale: cfg.Viewport.MaxScale,
-		ZoomStep: cfg.Viewport.ZoomStep,
-		ZoomLerp: cfg.Viewport.ZoomLerp,
-	}))
-	w.AddSystem(&render.System{}) // Draws world-space entities
-	w.AddSystem(&debug.System{})  // Overlay (UI/debug info)
+	for _, system := range simulationSystems {
+		w.AddSystem(system)
+	}
+
+	for _, system := range renderingSystems {
+		w.AddSystem(system)
+	}
 
 	// Start in the space scene
 	sceneManager.QueueScene(&space.Scene{})
