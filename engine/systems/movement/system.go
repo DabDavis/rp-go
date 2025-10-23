@@ -12,16 +12,20 @@ import (
 type System struct{}
 
 func (s *System) Update(w *ecs.World) {
-	for _, e := range w.Entities {
+	manager := w.EntitiesManager()
+	if manager == nil {
+		return
+	}
+	manager.ForEach(func(e *ecs.Entity) {
 		pos, hasPos := e.Get("Position").(*ecs.Position)
 		vel, hasVel := e.Get("Velocity").(*ecs.Velocity)
 		if !hasPos || !hasVel {
-			continue
+			return
 		}
 
 		// Skip stationary entities.
 		if vel.VX == 0 && vel.VY == 0 {
-			continue
+			return
 		}
 
 		// Move entity.
@@ -42,5 +46,5 @@ func (s *System) Update(w *ecs.World) {
 				Y:        pos.Y,
 			})
 		}
-	}
+	})
 }
