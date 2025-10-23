@@ -1,107 +1,119 @@
 package input
 
 import (
-	"math"
+    "math"
 
-	"rp-go/engine/ecs"
-	"rp-go/engine/platform"
-	"rp-go/engine/systems/devconsole"
+    "rp-go/engine/ecs"
+    "rp-go/engine/platform"
+    "rp-go/engine/systems/devconsole"
 )
 
+// System processes player input from keyboard and gamepad,
+// updating Velocity and Sprite components accordingly.
 type System struct{}
 
-// Default movement speed (units per frame)
+// Default movement speed in world units per frame.
 const moveSpeed = 3.0
 
+// Update polls input devices and applies movement to entities
+// with PlayerInput and Velocity components. When the developer
+// console is open, all player input is ignored.
 func (s *System) Update(w *ecs.World) {
-	for _, e := range w.Entities {
-		controller, hasController := e.Get("PlayerInput").(*ecs.PlayerInput)
-		if !hasController || controller == nil || !controller.Enabled {
-			continue
-		}
+    // Skip input when the developer console is open.
+    if devconsole.IsOpen() {
+        return
+    }
 
-		v, ok := e.Get("Velocity").(*ecs.Velocity)
-		if !ok {
-			continue
-		}
+    for _, e := range w.Entities {
+        controller, hasController := e.Get("PlayerInput").(*ecs.PlayerInput)
+        if !hasController || controller == nil || !controller.Enabled {
+            continue
+        }
 
-		sprite, hasSprite := e.Get("Sprite").(*ecs.Sprite)
+        v, ok := e.Get("Velocity").(*ecs.Velocity)
+        if !ok {
+            continue
+        }
 
-		// Local velocity deltas
-		vx, vy := 0.0, 0.0
+        sprite, hasSprite := e.Get("Sprite").(*ecs.Sprite)
 
-		/* ---------------------------- Keyboard movement --------------------------- */
-		if platform.IsKeyPressed(platform.KeyArrowLeft) || platform.IsKeyPressed(platform.KeyA) {
-			vx -= 1
-		}
-		if platform.IsKeyPressed(platform.KeyArrowRight) || platform.IsKeyPressed(platform.KeyD) {
-			vx += 1
-		}
-		if platform.IsKeyPressed(platform.KeyArrowUp) || platform.IsKeyPressed(platform.KeyW) {
-			vy -= 1
-		}
-		if platform.IsKeyPressed(platform.KeyArrowDown) || platform.IsKeyPressed(platform.KeyS) {
-			vy += 1
-		}
+        // Local velocity deltas
+        vx, vy := 0.0, 0.0
 
-		/* ----------------------------- Gamepad movement --------------------------- */
-		for _, id := range platform.GamepadIDs() {
-			if !platform.IsStandardGamepadLayoutAvailable(id) {
-				continue
-			}
+        /* ---------------------------- Keyboard movement ---------------------------- */
+        if platform.IsKeyPressed(platform.KeyArrowLeft) || platform.IsKeyPressed(platform.KeyA) {
+            vx -= 1
+        }
+        if platform.IsKeyPressed(platform.KeyArrowRight) || platform.IsKeyPressed(platform.KeyD) {
+            vx += 1
+        }
+        if platform.IsKeyPressed(platform.KeyArrowUp) || platform.IsKeyPressed(platform.KeyW) {
+            vy -= 1
+        }
+        if platform.IsKeyPressed(platform.KeyArrowDown) || platform.IsKeyPressed(platform.KeyS) {
+            vy += 1
+        }
 
-			// Analog stick input
-			padVX := platform.StandardGamepadAxisValue(id, platform.StandardGamepadAxisLeftStickHorizontal)
-			padVY := platform.StandardGamepadAxisValue(id, platform.StandardGamepadAxisLeftStickVertical)
+        /* ---------------------------- Gamepad movement ----------------------------- */
+        for _, id := range platform.GamepadIDs() {
+            if !platform.IsStandardGamepadLayoutAvailable(id) {
+                continue
+            }
 
-			// Deadzone
-			if math.Abs(padVX) < 0.1 {
-				padVX = 0
-			}
-			if math.Abs(padVY) < 0.1 {
-				padVY = 0
-			}
+            // Analog stick input
+            padVX := platform.StandardGamepadAxisValue(id, platform.StandardGamepadAxisLeftStickHorizontal)
+            padVY := platform.StandardGamepadAxisValue(id, platform.StandardGamepadAxisLeftStickVertical)
 
-			// Virtual D-pad override
-			if platform.IsGamepadLeft(id) {
-				padVX = -1
-			} else if platform.IsGamepadRight(id) {
-				padVX = 1
-			}
-			if platform.IsGamepadUp(id) {
-				padVY = -1
-			} else if platform.IsGamepadDown(id) {
-				padVY = 1
-			}
+            // Deadzone filter
+            if math.Abs(padVX) < 0.1 {
+                padVX = 0
+            }
+            if math.Abs(padVY) < 0.1 {
+                padVY = 0
+            }
 
-			if padVX != 0 || padVY != 0 {
-				vx = padVX
-				vy = padVY
-				break
-			}
-		}
+            // Virtual D-pad override
+            if platform.IsGamepadLeft(id) {
+                padVX = -1
+            } else if platform.IsGamepadRight(id) {
+                padVX = 1
+            }
+            if platform.IsGamepadUp(id) {
+                padVY = -1
+            } else if platform.IsGamepadDown(id) {
+                padVY = 1
+            }
 
-		/* ----------------------------- Normalize motion --------------------------- */
-		// Prevent faster diagonal movement (e.g. √2 speed)
-		mag := math.Hypot(vx, vy)
-		if mag > 1 {
-			vx /= mag
-			vy /= mag
-		}
+            // Use first nonzero input from a connected pad.
+            if padVX != 0 || padVY != 0 {
+                vx = padVX
+                vy = padVY
+                break
+            }
+        }
 
-		v.VX = vx * moveSpeed
-		v.VY = vy * moveSpeed
+        /* ---------------------------- Normalize motion ----------------------------- */
+        // Prevent faster diagonal movement (e.g. √2 speed).
+        mag := math.Hypot(vx, vy)
+        if mag > 1 {
+            vx /= mag
+            vy /= mag
+        }
 
-		/* ---------------------------- Sprite orientation --------------------------- */
-		if hasSprite {
-			if v.VX != 0 || v.VY != 0 {
-				sprite.Rotation = math.Atan2(v.VY, v.VX)
-			}
-			if v.VX < 0 {
-				sprite.FlipHorizontal = true
-			} else if v.VX > 0 {
-				sprite.FlipHorizontal = false
-			}
-		}
-	}
+        v.VX = vx * moveSpeed
+        v.VY = vy * moveSpeed
+
+        /* ---------------------------- Sprite orientation --------------------------- */
+        if hasSprite {
+            if v.VX != 0 || v.VY != 0 {
+                sprite.Rotation = math.Atan2(v.VY, v.VX)
+            }
+            if v.VX < 0 {
+                sprite.FlipHorizontal = true
+            } else if v.VX > 0 {
+                sprite.FlipHorizontal = false
+            }
+        }
+    }
 }
+

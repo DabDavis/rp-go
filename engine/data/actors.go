@@ -1,66 +1,38 @@
 package data
 
-import (
-	_ "embed"
-	"encoding/json"
-	"fmt"
-	"os"
-)
-
-//go:embed actors.json
-var embeddedActors []byte
-
-// ActorDatabase holds template definitions for spawning actors at runtime.
+// ActorDatabase represents the full JSON dataset of all actor templates.
 type ActorDatabase struct {
 	Actors []ActorTemplate `json:"actors"`
 }
 
-// ActorTemplate defines how to construct an actor and its default components.
+// ActorTemplate defines how an actor is instantiated in the world.
+// It includes appearance, physics, and AI behavior.
 type ActorTemplate struct {
-	Name       string               `json:"name"`
-	Archetype  string               `json:"archetype"`
-	Persistent bool                 `json:"persistent"`
-	Sprite     ActorSpriteTemplate  `json:"sprite"`
-	Velocity   *ActorVelocityPreset `json:"velocity"`
-	AI         *ActorAITemplate     `json:"ai"`
+	Name       string              `json:"name"`        // Template name, e.g. "drone"
+	Archetype  string              `json:"archetype"`   // Type group for filtering or spawning
+	Persistent bool                `json:"persistent"`  // If true, survives scene transitions
+	Sprite     ActorSpriteTemplate `json:"sprite"`      // Visual properties
+	Velocity   *ActorVelocity      `json:"velocity"`    // Optional starting motion vector
+	AI         *ActorAITemplate    `json:"ai"`          // Optional AI behavior preset
 }
 
-// ActorSpriteTemplate describes the sprite component attached to a spawned actor.
+// ActorSpriteTemplate defines the sprite used by an actor, including image and transform data.
 type ActorSpriteTemplate struct {
-	Image          string  `json:"image"`
-	Width          int     `json:"width"`
-	Height         int     `json:"height"`
-	PixelPerfect   bool    `json:"pixel_perfect"`
-	Rotation       float64 `json:"rotation"`
-	FlipHorizontal bool    `json:"flip_horizontal"`
+	Image          string  `json:"image"`           // Path to sprite asset
+	Width          int     `json:"width"`           // Optional explicit width
+	Height         int     `json:"height"`          // Optional explicit height
+	Rotation       float64 `json:"rotation"`        // Initial rotation (radians)
+	FlipHorizontal bool    `json:"flip_horizontal"` // Mirror horizontally
+	PixelPerfect   bool    `json:"pixel_perfect"`   // Disable smoothing/filtering
 }
 
-// ActorVelocityPreset defines the default velocity component to attach on spawn.
-type ActorVelocityPreset struct {
+// ActorVelocity defines an initial velocity vector for a spawned actor.
+type ActorVelocity struct {
 	VX float64 `json:"vx"`
 	VY float64 `json:"vy"`
 }
 
-// LoadActorDatabase reads actor templates from disk, falling back to the embedded copy.
-func LoadActorDatabase(path string) ActorDatabase {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		data = embeddedActors
-	}
+// ActorVelocityPreset is an alias for ActorVelocity for backward compatibility
+// with legacy tests and serialized data.
+type ActorVelocityPreset = ActorVelocity
 
-	var db ActorDatabase
-	if err := json.Unmarshal(data, &db); err != nil {
-		panic(fmt.Errorf("failed to parse actor database: %w", err))
-	}
-	return db
-}
-
-// TemplateByName retrieves an actor template by its unique name.
-func (db ActorDatabase) TemplateByName(name string) (ActorTemplate, bool) {
-	for _, tpl := range db.Actors {
-		if tpl.Name == name {
-			return tpl, true
-		}
-	}
-	return ActorTemplate{}, false
-}
