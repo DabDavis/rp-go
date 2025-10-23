@@ -120,3 +120,12 @@ type Actor struct {
 }
 
 func (a *Actor) Name() string { return "Actor" }
+
+// PlayerInput marks an entity as being eligible for local input control.
+// Only one enabled PlayerInput component should be active at a time so that
+// the controller cannot steer multiple actors simultaneously.
+type PlayerInput struct {
+	Enabled bool
+}
+
+func (p *PlayerInput) Name() string { return "PlayerInput" }

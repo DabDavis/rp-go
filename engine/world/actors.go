@@ -95,6 +95,10 @@ func (c *ActorCreator) Spawn(w *ecs.World, template string, position ecs.Positio
 		entity.Add(sprite)
 	}
 
+	if aiComponent := buildAIController(tpl.AI); aiComponent != nil {
+		entity.Add(aiComponent)
+	}
+
 	return entity, nil
 }
 
@@ -116,4 +120,84 @@ func (c *ActorCreator) Templates() []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+func buildAIController(tpl *data.ActorAITemplate) *ecs.AIController {
+	if tpl == nil {
+		return nil
+	}
+
+	controller := &ecs.AIController{
+		Speed: tpl.Speed,
+	}
+
+	var hasBehavior bool
+
+	if follow := tpl.Follow; follow != nil {
+		controller.Follow = &ecs.AIFollowBehavior{
+			Target:      follow.Target,
+			OffsetX:     follow.OffsetX,
+			OffsetY:     follow.OffsetY,
+			MinDistance: follow.MinDistance,
+			MaxDistance: follow.MaxDistance,
+			Speed:       follow.Speed,
+		}
+		hasBehavior = true
+	}
+
+	if pursue := tpl.Pursue; pursue != nil {
+		controller.Pursue = &ecs.AIPursueBehavior{
+			Target:         pursue.Target,
+			EngageDistance: pursue.EngageDistance,
+			Speed:          pursue.Speed,
+		}
+		hasBehavior = true
+	}
+
+	if patrol := tpl.Patrol; patrol != nil {
+		controller.Patrol = &ecs.AIPathBehavior{
+			Variant:   patrol.Variant,
+			Speed:     patrol.Speed,
+			Waypoints: convertAIWaypoints(patrol.Waypoints),
+		}
+		controller.PatrolState.Reset()
+		hasBehavior = true
+	}
+
+	if retreat := tpl.Retreat; retreat != nil {
+		controller.Retreat = &ecs.AIRetreatBehavior{
+			Target:          retreat.Target,
+			TriggerDistance: retreat.TriggerDistance,
+			SafeDistance:    retreat.SafeDistance,
+			Speed:           retreat.Speed,
+		}
+		hasBehavior = true
+	}
+
+	if travel := tpl.Travel; travel != nil {
+		controller.Travel = &ecs.AIPathBehavior{
+			Variant:   travel.Variant,
+			Speed:     travel.Speed,
+			Waypoints: convertAIWaypoints(travel.Waypoints),
+		}
+		controller.TravelState.Reset()
+		hasBehavior = true
+	}
+
+	if !hasBehavior && controller.Speed <= 0 {
+		return nil
+	}
+
+	return controller
+}
+
+func convertAIWaypoints(points []data.ActorAIWaypoint) []ecs.AIWaypoint {
+	if len(points) == 0 {
+		return nil
+	}
+	out := make([]ecs.AIWaypoint, len(points))
+	for i, pt := range points {
+		out[i] = ecs.AIWaypoint{X: pt.X, Y: pt.Y}
+	}
+	return out
 }
