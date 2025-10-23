@@ -11,7 +11,6 @@ import (
 type Registry struct {
 	byID        map[string]*ecs.Entity
 	byArchetype map[string][]*ecs.Entity
-	all         []*ecs.Entity
 }
 
 // NewRegistry constructs an empty actor registry ready for reuse.
@@ -33,7 +32,6 @@ func (r *Registry) Reset() {
 	for archetype := range r.byArchetype {
 		r.byArchetype[archetype] = r.byArchetype[archetype][:0]
 	}
-	r.all = r.all[:0]
 }
 
 // Add indexes an actor entity for lookups by ID and archetype.
@@ -45,7 +43,6 @@ func (r *Registry) Add(actor *ecs.Actor, entity *ecs.Entity) {
 	if actor.Archetype != "" {
 		r.byArchetype[actor.Archetype] = append(r.byArchetype[actor.Archetype], entity)
 	}
-	r.all = append(r.all, entity)
 }
 
 // FindByID retrieves the entity associated with the supplied actor ID.
@@ -85,30 +82,6 @@ func (r *Registry) FindByTemplatePrefix(prefix string) []*ecs.Entity {
 	}
 	sort.Slice(matches, func(i, j int) bool { return matches[i].ID < matches[j].ID })
 	return matches
-}
-
-// All returns every registered actor entity sorted by actor ID.
-func (r *Registry) All() []*ecs.Entity {
-	if r == nil {
-		return nil
-	}
-	if len(r.all) == 0 {
-		return nil
-	}
-	out := make([]*ecs.Entity, len(r.all))
-	copy(out, r.all)
-	sort.Slice(out, func(i, j int) bool {
-		ai, _ := out[i].Get("Actor").(*ecs.Actor)
-		aj, _ := out[j].Get("Actor").(*ecs.Actor)
-		if ai == nil || aj == nil {
-			return out[i].ID < out[j].ID
-		}
-		if ai.ID == aj.ID {
-			return out[i].ID < out[j].ID
-		}
-		return ai.ID < aj.ID
-	})
-	return out
 }
 
 // System keeps an index of all Actor components for other systems to query.

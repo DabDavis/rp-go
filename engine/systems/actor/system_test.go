@@ -1,7 +1,6 @@
 package actor
 
 import (
-	"reflect"
 	"testing"
 
 	"rp-go/engine/ecs"
@@ -40,54 +39,6 @@ func TestRegistryIndexesActors(t *testing.T) {
 	templated := registry.FindByTemplatePrefix("dark-elf-ship-raider")
 	if len(templated) != 1 || templated[0] != enemyB {
 		t.Fatalf("expected to find raider template match, got %+v", templated)
-	}
-}
-
-func TestRegistryAllReturnsSortedCopy(t *testing.T) {
-	w := ecs.NewWorld()
-
-	first := w.NewEntity()
-	first.ID = 99
-	first.Add(&ecs.Actor{ID: "gamma"})
-
-	second := w.NewEntity()
-	second.ID = 3
-	second.Add(&ecs.Actor{ID: "beta"})
-
-	third := w.NewEntity()
-	third.ID = 7
-	third.Add(&ecs.Actor{ID: "alpha"})
-
-	system := NewSystem()
-	system.Update(w)
-
-	actors := system.Registry().All()
-	if len(actors) != 3 {
-		t.Fatalf("expected three actors, got %d", len(actors))
-	}
-
-	ids := []string{}
-	for _, entity := range actors {
-		actorComp, _ := entity.Get("Actor").(*ecs.Actor)
-		if actorComp != nil {
-			ids = append(ids, actorComp.ID)
-		}
-	}
-
-	expected := []string{"alpha", "beta", "gamma"}
-	if !reflect.DeepEqual(ids, expected) {
-		t.Fatalf("expected IDs %v, got %v", expected, ids)
-	}
-
-	actors[0] = nil
-	actors = append(actors, w.NewEntity())
-
-	again := system.Registry().All()
-	if len(again) != 3 {
-		t.Fatalf("expected registry.All to return copy, got %d entries", len(again))
-	}
-	if again[0] == nil {
-		t.Fatalf("expected registry.All copy to remain unchanged")
 	}
 }
 
