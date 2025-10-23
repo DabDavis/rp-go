@@ -1,0 +1,65 @@
+{
+  "actions": [
+    {
+      "name": "patrol_square",
+      "type": "patrol",
+      "priority": 0,
+      "params": {
+        "speed": 2.8,
+        "waypoints": [
+          {"x": 240, "y": 220},
+          {"x": 320, "y": 260},
+          {"x": 400, "y": 220},
+          {"x": 320, "y": 180}
+        ]
+      }
+    },
+    {
+      "name": "pursue_player_close",
+      "type": "pursue",
+      "priority": 1,
+      "params": {
+        "target": "player",
+        "engage_distance": 280,
+        "speed": 3.6
+      }
+    },
+    {
+      "name": "follow_leader",
+      "type": "follow",
+      "priority": 1,
+      "params": {
+        "target": "dark-elf-ship-commander",
+        "offset_x": -96,
+        "offset_y": -48,
+        "min_distance": 48,
+        "max_distance": 200,
+        "speed": 3.2
+      }
+    },
+    {
+      "name": "retreat_if_damaged",
+      "type": "retreat",
+      "priority": 2,
+      "conditions": { "health_lt": 0.5 },
+      "params": {
+        "target": "player",
+        "trigger_distance": 220,
+        "safe_distance": 320,
+        "speed": 3.4
+      }
+    },
+    {
+      "name": "patrol_then_retreat",
+      "type": "script",
+      "priority": 0,
+      "params": {
+        "steps": [
+          { "action": "patrol_square", "delay_ms": 0 },
+          { "action": "retreat_if_damaged", "delay_ms": 500 }
+        ]
+      }
+    }
+  ]
+}
+

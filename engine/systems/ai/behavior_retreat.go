@@ -1,40 +1,48 @@
 package ai
 
 import (
-    "math"
+	"math"
 
-    "rp-go/engine/ecs"
+	"rp-go/engine/ecs"
 )
 
-func (s *System) applyRetreatBehavior(w *ecs.World, ai *ecs.AIController, pos *ecs.Position, vel *ecs.Velocity) bool {
-    cfg := ai.Retreat
-    if cfg == nil || cfg.Target == "" {
-        return false
-    }
+func (s *System) behaviorRetreat(w *ecs.World, e *ecs.Entity, pos *ecs.Position, vel *ecs.Velocity, p map[string]any) bool {
+	targetName, _ := p["target"].(string)
+	trigger := getFloat(p, "trigger_distance", 200)
+	safe := getFloat(p, "safe_distance", 320)
+	speed := getFloat(p, "speed", 2.4)
+	if targetName == "" {
+		return false
+	}
 
-    targetPos, ok := s.findTargetPosition(w, cfg.Target)
-    if !ok {
-        return false
-    }
-
-    dx, dy := pos.X-targetPos.X, pos.Y-targetPos.Y
-    dist := math.Hypot(dx, dy)
-
-    trigger := math.Max(cfg.TriggerDistance, 150)
-    safe := cfg.SafeDistance
-    if safe <= trigger {
-        safe = trigger * 1.25
-    }
-
-    if dist > trigger && (cfg.SafeDistance <= 0 || dist >= safe) {
-        return false
-    }
-    if dist >= safe {
-        vel.VX, vel.VY = 0, 0
-        return true
-    }
-
-    applyDirectionalVelocity(vel, dx, dy, dist, ai.SpeedFor(cfg.Speed))
-    return true
+	var target *ecs.Entity
+	w.EntitiesManager().ForEach(func(ent *ecs.Entity) {
+		if target != nil {
+			return
+		}
+		act, _ := ent.Get("Actor").(*ecs.Actor)
+		if act != nil && act.ID == targetName {
+			target = ent
+		}
+	})
+	if target == nil {
+		return false
+	}
+	tp, _ := target.Get("Position").(*ecs.Position)
+	if tp == nil {
+		return false
+	}
+	dx := pos.X - tp.X
+	dy := pos.Y - tp.Y
+	dist := math.Hypot(dx, dy)
+	if dist > safe {
+		return false
+	}
+	if dist < trigger {
+		vel.VX = (dx / dist) * speed
+		vel.VY = (dy / dist) * speed
+		return true
+	}
+	return false
 }
 

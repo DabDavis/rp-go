@@ -9,7 +9,7 @@ import (
  | SYSTEM INTERFACES                             |
  *───────────────────────────────────────────────*/
 
-// System defines any update-only system (simulation, physics, AI, etc.)
+// System defines any update-only system (simulation, AI, etc.)
 type System interface {
 	Update(world *World)
 }
@@ -40,20 +40,21 @@ type LayeredSystem interface {
 type DrawLayer int
 
 const (
-	LayerBackground DrawLayer = iota // Parallax, distant scenery
-	LayerWorld                       // Primary entities, world space
-	LayerForeground                  // Effects rendered after entities
-	LayerHUD                         // UI overlays in screen space
-	LayerEntityList                  // Debug entity lists
-	LayerDebug                       // Diagnostics, bounding boxes
-	LayerConsole                     // Developer console, drawn last
+	LayerBackground DrawLayer = iota // 🌌 Parallax, distant scenery
+	LayerWorld                       // 🌍 Game entities in world space
+	LayerForeground                  // ✨ Effects rendered after entities
+	LayerHUD                         // 🧭 Player HUD overlays
+	LayerEntityList                  // 🧾 Debug: Entity inspector
+	LayerDebug                       // 🧩 Debug diagnostics + systems
+	LayerConsole                     // 💬 Developer console overlay
+	LayerNone                        // 🚫 Non-drawable or internal system
 )
 
 /*───────────────────────────────────────────────*
  | UTILS                                         |
  *───────────────────────────────────────────────*/
 
-// SystemName returns a readable name for debug or profiling logs.
+// SystemName returns a readable name for debug/profiling logs.
 func SystemName(s System) string {
 	if s == nil {
 		return "<nil>"

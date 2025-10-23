@@ -1,33 +1,44 @@
 package ai
 
 import (
-    "math"
+	"math"
 
-    "rp-go/engine/ecs"
+	"rp-go/engine/ecs"
 )
 
-func (s *System) applyPursueBehavior(w *ecs.World, ai *ecs.AIController, pos *ecs.Position, vel *ecs.Velocity) bool {
-    cfg := ai.Pursue
-    if cfg == nil || cfg.Target == "" {
-        return false
-    }
+func (s *System) behaviorPursue(w *ecs.World, e *ecs.Entity, pos *ecs.Position, vel *ecs.Velocity, p map[string]any) bool {
+	targetName, _ := p["target"].(string)
+	speed := getFloat(p, "speed", 2.0)
+	maxDist := getFloat(p, "engage_distance", 300)
+	if targetName == "" {
+		return false
+	}
 
-    targetPos, ok := s.findTargetPosition(w, cfg.Target)
-    if !ok {
-        return false
-    }
-
-    dx, dy := targetPos.X-pos.X, targetPos.Y-pos.Y
-    dist := math.Hypot(dx, dy)
-    if dist == 0 {
-        return true
-    }
-
-    if cfg.EngageDistance > 0 && dist > cfg.EngageDistance {
-        return false
-    }
-
-    applyDirectionalVelocity(vel, dx, dy, dist, ai.SpeedFor(cfg.Speed))
-    return true
+	var target *ecs.Entity
+	w.EntitiesManager().ForEach(func(ent *ecs.Entity) {
+		if target != nil {
+			return
+		}
+		act, _ := ent.Get("Actor").(*ecs.Actor)
+		if act != nil && act.ID == targetName {
+			target = ent
+		}
+	})
+	if target == nil {
+		return false
+	}
+	tp, _ := target.Get("Position").(*ecs.Position)
+	if tp == nil {
+		return false
+	}
+	dx := tp.X - pos.X
+	dy := tp.Y - pos.Y
+	dist := math.Hypot(dx, dy)
+	if dist > maxDist || dist < 1 {
+		return false
+	}
+	vel.VX = (dx / dist) * speed
+	vel.VY = (dy / dist) * speed
+	return true
 }
 

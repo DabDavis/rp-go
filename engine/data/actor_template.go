@@ -7,7 +7,7 @@ type ActorTemplate struct {
 	Persistent bool                 `json:"persistent"`
 	Sprite     ActorSpriteTemplate  `json:"sprite"`
 	Velocity   *ActorVelocityPreset `json:"velocity,omitempty"`
-	AI         *ActorAITemplate     `json:"ai,omitempty"`
+	AIRefs     []string             `json:"ai_refs,omitempty"` //
 }
 
 // ActorSpriteTemplate defines the sprite for an actor.

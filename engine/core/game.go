@@ -7,10 +7,13 @@ import (
 	"rp-go/engine/platform"
 
 	"rp-go/engine/scenes/space"
+
 	"rp-go/engine/systems/actor"
 	"rp-go/engine/systems/ai"
+	"rp-go/engine/systems/aicomposer"
 	"rp-go/engine/systems/background"
 	"rp-go/engine/systems/camera"
+	dataSys "rp-go/engine/systems/data" // renamed to avoid collision
 	"rp-go/engine/systems/debug"
 	"rp-go/engine/systems/devconsole"
 	"rp-go/engine/systems/entitylist"
@@ -22,51 +25,76 @@ import (
 	"rp-go/engine/systems/windowmgr"
 )
 
-// GameWorld bundles the ECS world and runtime configuration.
+/*───────────────────────────────────────────────*
+ | GAME WORLD                                    |
+ *───────────────────────────────────────────────*/
+
 type GameWorld struct {
 	World  *ecs.World
 	Config data.RenderConfig
 }
 
-// NewGameWorld creates and initializes the full engine world with
-// all core systems registered in deterministic update order.
-func NewGameWorld() *GameWorld {
-	// Load render configuration (viewport, scaling, etc.)
-	cfg := data.LoadRenderConfig("engine/data/render_config.json")
+/*───────────────────────────────────────────────*
+ | INITIALIZATION                                |
+ *───────────────────────────────────────────────*/
 
-	// Initialize ECS world and event bus
+func NewGameWorld() *GameWorld {
+	// -------------------------------------------------------------------------
+	// ECS + EventBus Setup
+	// -------------------------------------------------------------------------
 	w := ecs.NewWorld()
 	w.EventBus = events.NewBus()
 
-	// Scene manager handles scene transitions and deferred loading.
-	sceneManager := &scene.Manager{}
+	// -------------------------------------------------------------------------
+	// Data System (config, actor db, ai.json hot reload)
+	// -------------------------------------------------------------------------
+	dataSystem := dataSys.NewSystem()
+	w.AddSystem(dataSystem)
 
-	// Create system instances
+	cfg := dataSystem.Config
+	if cfg.Window.Width == 0 {
+		cfg = data.LoadRenderConfig("engine/data/render_config.json")
+	}
+
+	// -------------------------------------------------------------------------
+	// Core Managers and Systems
+	// -------------------------------------------------------------------------
+	sceneManager := &scene.Manager{}
 	actorSystem := actor.NewSystem()
-	aiSystem := ai.NewSystem()
+
+	// --- AI Layer ------------------------------------------------------------
+	aiSystem := ai.NewSystem(dataSystem.AICatalog)
 	aiSystem.SetActorLookup(actorSystem.Registry())
 
-	// Developer console + overlays share the actor registry
+	composerSystem := aicomposer.NewSystem(dataSystem, aiSystem)
+
+	// --- Developer + Debug Layer --------------------------------------------
 	consoleSystem := devconsole.NewSystem(actorSystem.Registry(), devconsole.Config{
 		Margin:         16,
 		ViewportWidth:  cfg.Viewport.Width,
 		ViewportHeight: cfg.Viewport.Height,
 	})
+
 	debugSystem := debug.NewSystem(debug.Config{
 		Margin:         16,
 		ViewportWidth:  cfg.Viewport.Width,
 		ViewportHeight: cfg.Viewport.Height,
 	})
+	debugSystem.AttachComposer(composerSystem) // ✅ hook AIComposer debug window
+
 	entityListSystem := entitylist.NewSystem(actorSystem.Registry())
 
-	/* -------------------------- Simulation Phase --------------------------- */
-	// These systems update gameplay state but do not draw.
+	// -------------------------------------------------------------------------
+	// Simulation Phase — world state and logic
+	// -------------------------------------------------------------------------
 	simulationSystems := []ecs.System{
-		sceneManager,       // Scene transitions, state management
-		actorSystem,        // Actor registry and ownership
-		&input.System{},    // Player + controller input
-		aiSystem,           // AI controllers and decisions
-		&movement.System{}, // Position/velocity updates
+		dataSystem,         // config hot-reload + JSON catalogs
+		sceneManager,       // scene transitions, loading/unloading
+		actorSystem,        // actor registration
+		composerSystem,     // auto-binds AIControllers from refs
+		&input.System{},    // player + input control
+		aiSystem,           // AI decision-making & movement
+		&movement.System{}, // position/velocity propagation
 		camera.NewSystem(camera.Config{
 			MinScale: cfg.Viewport.MinScale,
 			MaxScale: cfg.Viewport.MaxScale,
@@ -75,10 +103,12 @@ func NewGameWorld() *GameWorld {
 		}),
 	}
 
-	/* --------------------------- Rendering Phase --------------------------- */
-	// These systems draw world-space and overlay visuals.
+	// -------------------------------------------------------------------------
+	// Rendering Phase — visuals & overlays
+	// -------------------------------------------------------------------------
 	hudSystem := hud.NewSystem()
 	windowSystem := windowmgr.NewSystem()
+
 	windowRenderers := []ecs.System{
 		render.NewWindowRenderer(ecs.LayerHUD),
 		render.NewWindowRenderer(ecs.LayerDebug),
@@ -86,35 +116,45 @@ func NewGameWorld() *GameWorld {
 	}
 
 	renderingSystems := []ecs.System{
-		&background.System{}, // 🌌 Parallax background stars
-		&render.System{},     // World-space sprite rendering
-		hudSystem,            // Maintains reusable HUD window content
-		windowSystem,         // Synchronizes modular UI window state
+		&background.System{}, // parallax stars
+		&render.System{},     // world-space drawables
+		hudSystem,            // reusable HUD content
+		windowSystem,         // modular window overlays
 	}
 	renderingSystems = append(renderingSystems, windowRenderers...)
 	renderingSystems = append(renderingSystems,
-		entityListSystem, // Entity overlay (actors + positions)
-		debugSystem,      // Diagnostic overlay logic and window content
-		consoleSystem,    // Developer console overlay (F12 toggle)
+		entityListSystem, // entity info overlay
+		debugSystem,      // debug metrics, including composer window
+		consoleSystem,    // developer console overlay
 	)
 
-	/* --------------------------- System Binding ---------------------------- */
-	// Add systems in simulation phase first, then rendering phase.
-	for _, system := range simulationSystems {
-		w.AddSystem(system)
+	// -------------------------------------------------------------------------
+	// System Registration
+	// -------------------------------------------------------------------------
+	for _, sys := range simulationSystems {
+		w.AddSystem(sys)
 	}
-	for _, system := range renderingSystems {
-		w.AddSystem(system)
+	for _, sys := range renderingSystems {
+		w.AddSystem(sys)
 	}
 
-	// Start in the default scene
+	// -------------------------------------------------------------------------
+	// Initial Scene Setup
+	// -------------------------------------------------------------------------
 	sceneManager.QueueScene(&space.Scene{})
 
+	// -------------------------------------------------------------------------
+	// Return Assembled World
+	// -------------------------------------------------------------------------
 	return &GameWorld{
 		World:  w,
 		Config: cfg,
 	}
 }
+
+/*───────────────────────────────────────────────*
+ | MAIN LOOP                                     |
+ *───────────────────────────────────────────────*/
 
 // Update advances the world simulation by one frame and flushes events.
 func (g *GameWorld) Update() {
@@ -124,8 +164,9 @@ func (g *GameWorld) Update() {
 	}
 }
 
-// Draw executes only world-space (camera-affected) rendering systems.
-// Overlay systems (debug, HUD, console) are drawn later in main.go.
+// Draw executes all world-space renderers.
+// Overlays (HUD, console, debug) are drawn later in main.go.
 func (g *GameWorld) Draw(screen *platform.Image) {
 	g.World.DrawWorld(screen)
 }
+

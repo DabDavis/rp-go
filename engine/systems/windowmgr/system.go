@@ -4,51 +4,61 @@ import (
 	"sort"
 
 	"rp-go/engine/ecs"
+	"rp-go/engine/events"
+	"rp-go/engine/platform"
 	"rp-go/engine/ui/window"
 )
 
-// System scans the ECS world for window components and maintains the shared
-// registry consumed by rendering systems. It performs no rendering directly.
+// System tracks and updates all window components in the ECS world.
+// It maintains a shared global registry for the renderer to read.
 type System struct {
 	registry *Registry
 }
 
 var globalRegistry = NewRegistry()
 
-// NewSystem constructs a window manager bound to the global registry.
+// NewSystem constructs the manager bound to the global registry.
 func NewSystem() *System {
 	return &System{registry: globalRegistry}
 }
 
-// SharedRegistry exposes the global window registry for read-only usage.
+// SharedRegistry exposes the global registry for rendering systems.
 func SharedRegistry() *Registry {
 	return globalRegistry
 }
 
-// Update rebuilds the registry from the current set of entities each frame.
+// Layer reports which ECS layer this system belongs to (HUD layer).
+func (s *System) Layer() ecs.DrawLayer { return ecs.LayerHUD }
+
+// Update rebuilds the registry and handles user interactions.
 func (s *System) Update(world *ecs.World) {
 	if world == nil {
 		return
 	}
+
 	if s.registry == nil {
 		s.registry = globalRegistry
 	}
 
-	manager := world.EntitiesManager()
-	if manager == nil {
-		return
-	}
-
 	s.registry.Reset()
-	manager.ForEach(func(e *ecs.Entity) {
+
+	for _, e := range world.Entities {
 		comp, _ := e.Get("Window").(*window.Component)
 		if comp == nil || !comp.Visible {
-			return
+			continue
 		}
 		s.registry.Add(comp)
-	})
+	}
+
 	s.registry.Finalize()
+
+	// Handle user interaction (mouse clicks, drags)
+	bus, _ := world.EventBus.(*events.TypedBus)
+	UpdateWindowInteractions(s.registry.All(), bus)
 }
+
+// Draw is intentionally empty; rendering is handled in render.WindowRenderer.
+func (s *System) Draw(*ecs.World, *platform.Image) {}
 
 // Registry maintains ordered windows grouped by draw layer.
 type Registry struct {
@@ -56,7 +66,7 @@ type Registry struct {
 	layerOrder []ecs.DrawLayer
 }
 
-// NewRegistry creates an empty registry instance.
+// NewRegistry creates an empty registry.
 func NewRegistry() *Registry {
 	return &Registry{
 		layers:     make(map[ecs.DrawLayer][]*window.Component),
@@ -64,24 +74,15 @@ func NewRegistry() *Registry {
 	}
 }
 
-// Reset clears all tracked windows while preserving allocated slices.
 func (r *Registry) Reset() {
-	if r == nil {
-		return
-	}
-	for key := range r.layers {
-		slice := r.layers[key]
-		for i := range slice {
-			slice[i] = nil
-		}
-		r.layers[key] = r.layers[key][:0]
+	for k := range r.layers {
+		r.layers[k] = r.layers[k][:0]
 	}
 	r.layerOrder = r.layerOrder[:0]
 }
 
-// Add registers a window component for later rendering.
 func (r *Registry) Add(comp *window.Component) {
-	if r == nil || comp == nil {
+	if comp == nil {
 		return
 	}
 	layer := comp.Layer
@@ -92,42 +93,34 @@ func (r *Registry) Add(comp *window.Component) {
 	r.layers[layer] = append(r.layers[layer], comp)
 }
 
-// Finalize sorts windows within each layer by order/id for stable rendering.
 func (r *Registry) Finalize() {
-	if r == nil {
-		return
-	}
-	for layer, windows := range r.layers {
-		sort.SliceStable(windows, func(i, j int) bool {
-			if windows[i].Order == windows[j].Order {
-				return windows[i].ID < windows[j].ID
+	for layer, list := range r.layers {
+		sort.SliceStable(list, func(i, j int) bool {
+			if list[i].Order == list[j].Order {
+				return list[i].ID < list[j].ID
 			}
-			return windows[i].Order < windows[j].Order
+			return list[i].Order < list[j].Order
 		})
-		r.layers[layer] = windows
+		r.layers[layer] = list
 	}
 }
 
-// Layers returns the list of layers that currently contain windows.
-func (r *Registry) Layers() []ecs.DrawLayer {
-	if r == nil {
-		return nil
-	}
-	result := make([]ecs.DrawLayer, len(r.layerOrder))
-	copy(result, r.layerOrder)
-	return result
-}
-
-// Windows returns an ordered copy of the windows for the requested layer.
 func (r *Registry) Windows(layer ecs.DrawLayer) []*window.Component {
 	if r == nil {
 		return nil
 	}
-	src := r.layers[layer]
-	if len(src) == 0 {
+	return append([]*window.Component(nil), r.layers[layer]...)
+}
+
+// All returns all windows across all layers (for input handling).
+func (r *Registry) All() []*window.Component {
+	if r == nil {
 		return nil
 	}
-	out := make([]*window.Component, len(src))
-	copy(out, src)
-	return out
+	var all []*window.Component
+	for _, layer := range r.layerOrder {
+		all = append(all, r.layers[layer]...)
+	}
+	return all
 }
+

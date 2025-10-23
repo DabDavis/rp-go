@@ -10,24 +10,10 @@
         "height": 64,
         "pixel_perfect": true
       },
-      "velocity": {
-        "vx": 0,
-        "vy": 0
-      },
-      "ai": {
-        "speed": 2.8,
-        "patrol": {
-          "variant": "loop",
-          "speed": 2.8,
-          "waypoints": [
-            {"x": 240, "y": 220},
-            {"x": 320, "y": 260},
-            {"x": 400, "y": 220},
-            {"x": 320, "y": 180}
-          ]
-        }
-      }
+      "velocity": { "vx": 0, "vy": 0 },
+      "ai_refs": ["patrol_square"]
     },
+
     {
       "name": "dark-elf-ship-vanguard",
       "archetype": "enemy",
@@ -38,19 +24,10 @@
         "height": 64,
         "pixel_perfect": true
       },
-      "velocity": {
-        "vx": 0,
-        "vy": 0
-      },
-      "ai": {
-        "speed": 3.3,
-        "pursue": {
-          "target": "player",
-          "engage_distance": 280,
-          "speed": 3.6
-        }
-      }
+      "velocity": { "vx": 0, "vy": 0 },
+      "ai_refs": ["pursue_player_close"]
     },
+
     {
       "name": "dark-elf-ship-raider",
       "archetype": "enemy",
@@ -61,22 +38,10 @@
         "height": 64,
         "pixel_perfect": true
       },
-      "velocity": {
-        "vx": 0,
-        "vy": 0
-      },
-      "ai": {
-        "speed": 3.0,
-        "follow": {
-          "target": "player",
-          "offset_x": -96,
-          "offset_y": -48,
-          "min_distance": 48,
-          "max_distance": 200,
-          "speed": 3.2
-        }
-      }
+      "velocity": { "vx": 0, "vy": 0 },
+      "ai_refs": ["follow_leader"]
     },
+
     {
       "name": "dark-elf-ship-evader",
       "archetype": "enemy",
@@ -87,20 +52,10 @@
         "height": 64,
         "pixel_perfect": true
       },
-      "velocity": {
-        "vx": 0,
-        "vy": 0
-      },
-      "ai": {
-        "speed": 3.1,
-        "retreat": {
-          "target": "player",
-          "trigger_distance": 220,
-          "safe_distance": 320,
-          "speed": 3.4
-        }
-      }
+      "velocity": { "vx": 0, "vy": 0 },
+      "ai_refs": ["retreat_if_damaged"]
     },
+
     {
       "name": "dark-elf-ship-commander",
       "archetype": "enemy",
@@ -111,27 +66,9 @@
         "height": 96,
         "pixel_perfect": true
       },
-      "velocity": {
-        "vx": 0,
-        "vy": 0
-      },
-      "ai": {
-        "speed": 2.6,
-        "travel": {
-          "variant": "pingpong",
-          "speed": 2.4,
-          "waypoints": [
-            {"x": 280, "y": 160},
-            {"x": 440, "y": 220}
-          ]
-        },
-        "retreat": {
-          "target": "player",
-          "trigger_distance": 180,
-          "safe_distance": 320,
-          "speed": 2.8
-        }
-      }
+      "velocity": { "vx": 0, "vy": 0 },
+      "ai_refs": ["patrol_then_retreat"]
     }
   ]
 }
+

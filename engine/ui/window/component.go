@@ -7,6 +7,10 @@ import (
 	"rp-go/engine/platform"
 )
 
+/* -------------------------------------------------------------------------- */
+/*                                   Bounds                                   */
+/* -------------------------------------------------------------------------- */
+
 // Bounds describes a rectangular region in screen space.
 type Bounds struct {
 	X      int
@@ -33,6 +37,15 @@ func (b Bounds) Inset(padding int) Bounds {
 	return Bounds{X: nx, Y: ny, Width: nw, Height: nh}
 }
 
+// Contains checks if a point (x, y) lies inside the bounds.
+func (b Bounds) Contains(x, y int) bool {
+	return x >= b.X && x < b.X+b.Width && y >= b.Y && y < b.Y+b.Height
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   Content                                  */
+/* -------------------------------------------------------------------------- */
+
 // Content represents drawable window content.
 type Content interface {
 	Draw(world *ecs.World, canvas *platform.Image, bounds Bounds)
@@ -48,6 +61,10 @@ func (fn RendererFunc) Draw(world *ecs.World, canvas *platform.Image, bounds Bou
 	}
 	fn(world, canvas, bounds)
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                  Component                                 */
+/* -------------------------------------------------------------------------- */
 
 // Component is an ECS component describing a reusable UI window.
 type Component struct {
@@ -67,7 +84,18 @@ type Component struct {
 	TitleColor color.Color
 
 	Content Content
+
+	// --- Interactive features ---
+	Movable   bool // allows dragging via title bar
+	Locked    bool // disables user input entirely
+	Minimized bool // window is collapsed (content hidden)
+	Closable  bool // shows and enables a close button
+	Closed    bool // true if user clicked close
 }
+
+/* -------------------------------------------------------------------------- */
+/*                               Constructors                                 */
+/* -------------------------------------------------------------------------- */
 
 // NewComponent creates a window component with sensible defaults.
 func NewComponent(id, title string, bounds Bounds, content Content) *Component {
@@ -85,27 +113,39 @@ func NewComponent(id, title string, bounds Bounds, content Content) *Component {
 		TitleBar:       color.RGBA{30, 45, 90, 220},
 		TitleColor:     color.RGBA{220, 235, 255, 255},
 		Content:        content,
+		Movable:        true,  // default: draggable
+		Closable:       true,  // default: shows a close button
+		Locked:         false, // default: interactive
+		Minimized:      false,
+		Closed:         false,
 	}
 }
 
 // Name implements ecs.Component.
 func (c *Component) Name() string { return "Window" }
 
+/* -------------------------------------------------------------------------- */
+/*                               Helper Methods                               */
+/* -------------------------------------------------------------------------- */
+
 // ContentBounds returns the drawable region for the window content.
 func (c *Component) ContentBounds() Bounds {
-	padding := c.Padding
-	if padding < 0 {
-		padding = 0
+	if c == nil {
+		return Bounds{}
 	}
-	titleBar := c.TitleBarHeight
-	if titleBar < 0 {
-		titleBar = 0
+	if c.Minimized {
+		// When minimized, content area is 0 height.
+		return Bounds{X: 0, Y: 0, Width: 0, Height: 0}
 	}
+
+	padding := max(0, c.Padding)
+	titleBar := max(0, c.TitleBarHeight)
+
 	width := c.Bounds.Width - padding*2
+	height := c.Bounds.Height - titleBar - padding*2
 	if width < 0 {
 		width = 0
 	}
-	height := c.Bounds.Height - titleBar - padding*2
 	if height < 0 {
 		height = 0
 	}
@@ -116,3 +156,20 @@ func (c *Component) ContentBounds() Bounds {
 		Height: height,
 	}
 }
+
+// ToggleMinimize flips the minimized state.
+func (c *Component) ToggleMinimize() { c.Minimized = !c.Minimized }
+
+// Close marks the window as closed and invisible.
+func (c *Component) Close() {
+	c.Closed = true
+	c.Visible = false
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+

@@ -1,9 +1,26 @@
 package ecs
 
-import "rp-go/engine/platform"
+import (
+	"fmt"
+	"rp-go/engine/platform"
+)
 
 /*───────────────────────────────────────────────*
- | BASIC COMPONENTS                              |
+ | COMPONENT INTERFACE                           |
+ *───────────────────────────────────────────────*/
+
+// Component is any data-only object that can be attached to an Entity.
+type Component interface {
+	Name() string
+}
+
+// Tag is a simple zero-data marker component.
+type Tag string
+
+func (t Tag) Name() string { return string(t) }
+
+/*───────────────────────────────────────────────*
+ | TRANSFORM COMPONENTS                          |
  *───────────────────────────────────────────────*/
 
 type Position struct{ X, Y float64 }
@@ -65,14 +82,13 @@ func (s *Sprite) PixelScale() float64 {
 	return s.cachedScale
 }
 
-// DrawSize returns the sprite’s current rendered dimensions in pixels.
 func (s *Sprite) DrawSize() (float64, float64) {
 	s.ensureCache()
 	return float64(s.cachedTargetWidth), float64(s.cachedTargetHeight)
 }
 
 /*───────────────────────────────────────────────*
- | CAMERA                                        |
+ | CAMERA COMPONENTS                             |
  *───────────────────────────────────────────────*/
 
 type Camera struct {
@@ -91,7 +107,7 @@ type CameraTarget struct{}
 func (c *CameraTarget) Name() string { return "CameraTarget" }
 
 /*───────────────────────────────────────────────*
- | ACTOR + INPUT                                 |
+ | ACTOR & INPUT                                 |
  *───────────────────────────────────────────────*/
 
 type Actor struct {
@@ -103,4 +119,82 @@ func (a *Actor) Name() string { return "Actor" }
 
 type PlayerInput struct{ Enabled bool }
 func (p *PlayerInput) Name() string { return "PlayerInput" }
+
+/*───────────────────────────────────────────────*
+ | HEALTH COMPONENT                              |
+ *───────────────────────────────────────────────*/
+
+type Health struct {
+	Current float64
+	Max     float64
+}
+func (h *Health) Name() string { return "Health" }
+
+func (h *Health) Fraction() float64 {
+	if h.Max <= 0 {
+		return 0
+	}
+	return h.Current / h.Max
+}
+func (h *Health) ApplyDamage(amount float64) {
+	h.Current -= amount
+	if h.Current < 0 {
+		h.Current = 0
+	}
+}
+func (h *Health) Heal(amount float64) {
+	h.Current += amount
+	if h.Current > h.Max {
+		h.Current = h.Max
+	}
+}
+
+/*───────────────────────────────────────────────*
+ | SCRIPT STATE (for AI scripts)                 |
+ *───────────────────────────────────────────────*/
+
+type ScriptState struct {
+	Step   int
+	Timer  float64
+	Active bool
+}
+func (s *ScriptState) Name() string { return "AIScriptState" }
+
+/*───────────────────────────────────────────────*
+ | ENTITY HELPERS                                |
+ *───────────────────────────────────────────────*/
+
+// AddNamed safely adds or replaces a component by explicit key.
+func (e *Entity) AddNamed(name string, c Component) {
+	if e == nil || c == nil {
+		return
+	}
+	if _, exists := e.Components[name]; exists {
+		fmt.Printf("[ECS] Warning: replacing component '%s' on entity %d\n", name, e.ID)
+	}
+	e.Components[name] = c
+}
+
+/*───────────────────────────────────────────────*
+ | GENERIC COMPONENT ACCESS                      |
+ *───────────────────────────────────────────────*/
+
+// GetTyped is a standalone helper that retrieves a component as a typed value.
+// Example:
+//   vel := ecs.GetTyped[*ecs.Velocity](entity, "Velocity")
+func GetTyped[T Component](e *Entity, name string) T {
+	var zero T
+	if e == nil {
+		return zero
+	}
+	c := e.Get(name)
+	if c == nil {
+		return zero
+	}
+	val, ok := c.(T)
+	if !ok {
+		return zero
+	}
+	return val
+}
 

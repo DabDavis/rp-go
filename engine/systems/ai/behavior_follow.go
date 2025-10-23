@@ -1,41 +1,45 @@
 package ai
 
 import (
-    "math"
+	"math"
 
-    "rp-go/engine/ecs"
+	"rp-go/engine/ecs"
 )
 
-func (s *System) applyFollowBehavior(w *ecs.World, ai *ecs.AIController, pos *ecs.Position, vel *ecs.Velocity) bool {
-    cfg := ai.Follow
-    if cfg == nil || cfg.Target == "" {
-        return false
-    }
+func (s *System) behaviorFollow(w *ecs.World, e *ecs.Entity, pos *ecs.Position, vel *ecs.Velocity, p map[string]any) bool {
+	targetName, _ := p["target"].(string)
+	speed := getFloat(p, "speed", 2.2)
+	offsetX := getFloat(p, "offset_x", 0)
+	offsetY := getFloat(p, "offset_y", 0)
+	minDist := getFloat(p, "min_distance", 32)
 
-    targetPos, ok := s.findTargetPosition(w, cfg.Target)
-    if !ok {
-        return false
-    }
-
-    dx := targetPos.X + cfg.OffsetX - pos.X
-    dy := targetPos.Y + cfg.OffsetY - pos.Y
-    dist := math.Hypot(dx, dy)
-    if dist == 0 {
-        return true
-    }
-
-    minDist := math.Max(cfg.MinDistance, 1)
-    if dist <= minDist {
-        return true
-    }
-
-    speed := ai.SpeedFor(cfg.Speed)
-    if max := cfg.MaxDistance; max > minDist && dist < max {
-        factor := (dist - minDist) / (max - minDist)
-        speed *= math.Max(factor, 0)
-    }
-
-    applyDirectionalVelocity(vel, dx, dy, dist, speed)
-    return true
+	var target *ecs.Entity
+	w.EntitiesManager().ForEach(func(ent *ecs.Entity) {
+		if target != nil {
+			return
+		}
+		act, _ := ent.Get("Actor").(*ecs.Actor)
+		if act != nil && act.ID == targetName {
+			target = ent
+		}
+	})
+	if target == nil {
+		return false
+	}
+	tp, _ := target.Get("Position").(*ecs.Position)
+	if tp == nil {
+		return false
+	}
+	tx := tp.X + offsetX
+	ty := tp.Y + offsetY
+	dx := tx - pos.X
+	dy := ty - pos.Y
+	dist := math.Hypot(dx, dy)
+	if dist < minDist {
+		return false
+	}
+	vel.VX = (dx / dist) * speed
+	vel.VY = (dy / dist) * speed
+	return true
 }
 
