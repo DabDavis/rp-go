@@ -12,11 +12,9 @@ import (
 // DrawCameraInfo overlays basic camera diagnostics on screen.
 func DrawCameraInfo(w *ecs.World, screen *platform.Image) {
 	var cam *ecs.Camera
-	for _, e := range w.Entities {
-		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
-			cam = c
-			break
-		}
+	if manager := w.EntitiesManager(); manager != nil {
+		_, comp := manager.FirstComponent("Camera")
+		cam, _ = comp.(*ecs.Camera)
 	}
 	if cam == nil {
 		return

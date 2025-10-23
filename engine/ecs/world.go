@@ -9,8 +9,8 @@ import (
 )
 
 /*───────────────────────────────────────────────*
- | WORLD STRUCTURE                               |
- *───────────────────────────────────────────────*/
+| WORLD STRUCTURE                               |
+*───────────────────────────────────────────────*/
 
 type World struct {
 	nextID   EntityID
@@ -23,6 +23,8 @@ type World struct {
 	worldLayers   []DrawLayer
 	overlayLayers []DrawLayer
 	nextOrder     int
+
+	entityManager *EntityManager
 }
 
 type systemEntry struct {
@@ -38,17 +40,19 @@ type drawEntry struct {
 }
 
 /*───────────────────────────────────────────────*
- | WORLD LIFECYCLE                               |
- *───────────────────────────────────────────────*/
+| WORLD LIFECYCLE                               |
+*───────────────────────────────────────────────*/
 
 func NewWorld() *World {
-	return &World{
+	w := &World{
 		drawBuckets:   make(map[DrawLayer][]drawEntry, 8),
 		worldLayers:   []DrawLayer{LayerBackground, LayerWorld, LayerForeground},
 		overlayLayers: []DrawLayer{LayerHUD, LayerEntityList, LayerDebug, LayerConsole},
 		Systems:       make([]System, 0, 16),
 		Entities:      make([]*Entity, 0, 256),
 	}
+	w.entityManager = newEntityManager(w)
+	return w
 }
 
 func (w *World) NewEntity() *Entity {
@@ -58,9 +62,20 @@ func (w *World) NewEntity() *Entity {
 	return e
 }
 
+// EntitiesManager exposes the centralized entity manager for iteration helpers.
+func (w *World) EntitiesManager() *EntityManager {
+	if w == nil {
+		return nil
+	}
+	if w.entityManager == nil {
+		w.entityManager = newEntityManager(w)
+	}
+	return w.entityManager
+}
+
 /*───────────────────────────────────────────────*
- | SYSTEM MANAGEMENT                             |
- *───────────────────────────────────────────────*/
+| SYSTEM MANAGEMENT                             |
+*───────────────────────────────────────────────*/
 
 func (w *World) AddSystem(s System) {
 	if s == nil {
@@ -93,8 +108,8 @@ func (w *World) AddSystem(s System) {
 }
 
 /*───────────────────────────────────────────────*
- | UPDATE LOOP                                   |
- *───────────────────────────────────────────────*/
+| UPDATE LOOP                                   |
+*───────────────────────────────────────────────*/
 
 var EnableProfiling bool // Toggle for profiling per-system timings
 
@@ -114,8 +129,8 @@ func (w *World) Update() {
 }
 
 /*───────────────────────────────────────────────*
- | ENTITY MANAGEMENT                             |
- *───────────────────────────────────────────────*/
+| ENTITY MANAGEMENT                             |
+*───────────────────────────────────────────────*/
 
 func (w *World) RemoveEntity(target *Entity) {
 	if w == nil || target == nil {
@@ -142,8 +157,8 @@ func (w *World) RemoveEntityByID(id EntityID) {
 }
 
 /*───────────────────────────────────────────────*
- | DRAWING PIPELINE                              |
- *───────────────────────────────────────────────*/
+| DRAWING PIPELINE                              |
+*───────────────────────────────────────────────*/
 
 func (w *World) DrawWorld(screen *platform.Image) {
 	w.drawLayerGroup(screen, w.worldLayers)
@@ -177,8 +192,8 @@ func (w *World) drawLayerGroup(screen *platform.Image, layers []DrawLayer) {
 }
 
 /*───────────────────────────────────────────────*
- | LAYER MANAGEMENT                              |
- *───────────────────────────────────────────────*/
+| LAYER MANAGEMENT                              |
+*───────────────────────────────────────────────*/
 
 func (w *World) ensureLayerRegistered(layer DrawLayer) {
 	if _, exists := w.drawBuckets[layer]; !exists {
@@ -200,8 +215,8 @@ func (w *World) SetOverlayLayers(layers ...DrawLayer) {
 }
 
 /*───────────────────────────────────────────────*
- | INTERNAL HELPERS                              |
- *───────────────────────────────────────────────*/
+| INTERNAL HELPERS                              |
+*───────────────────────────────────────────────*/
 
 func systemPriority(s System) int {
 	if ps, ok := s.(PrioritizedSystem); ok {
@@ -258,4 +273,3 @@ func uniqueLayers(layers []DrawLayer) []DrawLayer {
 func isOverlayLayer(layer DrawLayer) bool {
 	return layer >= LayerHUD
 }
-

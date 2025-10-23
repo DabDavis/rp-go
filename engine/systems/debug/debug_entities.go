@@ -13,26 +13,28 @@ import (
 func DrawEntityDiagnostics(w *ecs.World, screen *platform.Image, frame int) {
 	y := 100
 
-	for _, e := range w.Entities {
-		pos, ok1 := e.Get("Position").(*ecs.Position)
-		sprite, ok2 := e.Get("Sprite").(*ecs.Sprite)
-		if !ok1 || !ok2 || sprite.Image == nil {
-			continue
-		}
+	if manager := w.EntitiesManager(); manager != nil {
+		manager.ForEach(func(e *ecs.Entity) {
+			pos, ok1 := e.Get("Position").(*ecs.Position)
+			sprite, ok2 := e.Get("Sprite").(*ecs.Sprite)
+			if !ok1 || !ok2 || sprite.Image == nil {
+				return
+			}
 
-		imgW, imgH := sprite.NativeSize()
-		spriteScale := sprite.PixelScale()
+			imgW, imgH := sprite.NativeSize()
+			spriteScale := sprite.PixelScale()
 
-		entityInfo := fmt.Sprintf(
-			"Entity %d | World(%.1f, %.1f) | Sprite %.0fx%.0f | Scale: %.4f",
-			e.ID, pos.X, pos.Y, imgW, imgH, spriteScale,
-		)
+			entityInfo := fmt.Sprintf(
+				"Entity %d | World(%.1f, %.1f) | Sprite %.0fx%.0f | Scale: %.4f",
+				e.ID, pos.X, pos.Y, imgW, imgH, spriteScale,
+			)
 
-		platform.DrawText(screen, entityInfo, basicfont.Face7x13, 10, y, color.RGBA{180, 220, 255, 255})
-		y += 14
+			platform.DrawText(screen, entityInfo, basicfont.Face7x13, 10, y, color.RGBA{180, 220, 255, 255})
+			y += 14
 
-		if frame%15 == 0 {
-			fmt.Println("[ENTITY DEBUG]", entityInfo)
-		}
+			if frame%15 == 0 {
+				fmt.Println("[ENTITY DEBUG]", entityInfo)
+			}
+		})
 	}
 }

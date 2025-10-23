@@ -20,16 +20,19 @@ func (s *System) Update(*ecs.World) {}
 
 func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	// Build debug string
+	manager := w.EntitiesManager()
 	var cam *ecs.Camera
-	for _, e := range w.Entities {
-		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
-			cam = c
-			break
-		}
+	if manager != nil {
+		_, comp := manager.FirstComponent("Camera")
+		cam, _ = comp.(*ecs.Camera)
 	}
 
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", platform.ActualFPS(), len(w.Entities)))
+	entityCount := 0
+	if manager != nil {
+		entityCount = manager.Count()
+	}
+	builder.WriteString(fmt.Sprintf("FPS: %.0f\nEntities: %d", platform.ActualFPS(), entityCount))
 
 	if cam != nil {
 		targetScale := cam.TargetScale

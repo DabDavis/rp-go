@@ -33,10 +33,14 @@ func (s *System) Update(w *ecs.World) {
 
 	primaryAssigned := false
 
-	for _, e := range w.Entities {
+	manager := w.EntitiesManager()
+	if manager == nil {
+		return
+	}
+	manager.ForEach(func(e *ecs.Entity) {
 		actor, ok := e.Get("Actor").(*ecs.Actor)
 		if !ok || actor == nil {
-			continue
+			return
 		}
 
 		// Index this actor for global lookups
@@ -47,7 +51,7 @@ func (s *System) Update(w *ecs.World) {
 			// Disable input if AI is present
 			if _, hasAI := e.Get("AIController").(*ecs.AIController); hasAI {
 				controller.Enabled = false
-				continue
+				return
 			}
 
 			// Allow only the first PlayerInput to be active
@@ -58,6 +62,5 @@ func (s *System) Update(w *ecs.World) {
 				controller.Enabled = false
 			}
 		}
-	}
+	})
 }
-
