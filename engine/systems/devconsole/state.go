@@ -5,6 +5,7 @@ import (
 
 	"rp-go/engine/ecs"
 	"rp-go/engine/systems/actor"
+	"rp-go/engine/ui/window"
 )
 
 // Global atomic flag for console visibility.
@@ -15,8 +16,8 @@ func IsOpen() bool { return consoleOpen.Load() }
 
 // ConsoleState contains all runtime data for the dev console.
 type ConsoleState struct {
-	Registry    *actor.Registry   // reference to ECS actor registry
-	Creator     ActorSpawner      // interface for spawning
+	Registry    *actor.Registry // reference to ECS actor registry
+	Creator     ActorSpawner    // interface for spawning
 	Open        bool
 	JustOpened  bool
 	CursorTick  int
@@ -24,6 +25,10 @@ type ConsoleState struct {
 	History     []string
 	HistoryIdx  int
 	LogMessages []string
+
+	windowEntity    *ecs.Entity
+	windowComponent *window.Component
+	windowContent   *consoleWindowContent
 }
 
 // ActorRegistry defines a minimal interface to query actors.
@@ -46,4 +51,3 @@ func NewConsoleState(reg *actor.Registry) *ConsoleState {
 		HistoryIdx: -1,
 	}
 }
-

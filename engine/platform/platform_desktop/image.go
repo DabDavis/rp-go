@@ -35,8 +35,8 @@ func NewImageFromImage(src image.Image) *Image {
 	return &Image{native: ebiten.NewImageFromImage(src)}
 }
 
-func (img *Image) Clear() { img.native.Clear() }
-func (img *Image) Fill(c color.Color) { img.native.Fill(c) }
+func (img *Image) Clear()                  { img.native.Clear() }
+func (img *Image) Fill(c color.Color)      { img.native.Fill(c) }
 func (img *Image) Bounds() image.Rectangle { return img.native.Bounds() }
 
 func (img *Image) DrawImage(src *Image, op *DrawImageOptions) {
@@ -52,11 +52,13 @@ func (img *Image) DrawImage(src *Image, op *DrawImageOptions) {
 
 // Helper rectangle fill (for starfield, etc.)
 func (img *Image) FillRect(x, y, w, h int, c color.Color) {
-	if img == nil {
+	if img == nil || img.native == nil || w <= 0 || h <= 0 {
 		return
 	}
-	rect := image.Rect(x, y, x+w, y+h)
+	rect := image.Rect(x, y, x+w, y+h).Intersect(img.native.Bounds())
+	if rect.Empty() {
+		return
+	}
 	sub := img.native.SubImage(rect).(*ebiten.Image)
 	sub.Fill(c)
 }
-

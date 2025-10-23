@@ -50,11 +50,9 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	s.ensureStars(screen)
 
 	var cam *ecs.Camera
-	for _, e := range w.Entities {
-		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
-			cam = c
-			break
-		}
+	if manager := w.EntitiesManager(); manager != nil {
+		_, comp := manager.FirstComponent("Camera")
+		cam, _ = comp.(*ecs.Camera)
 	}
 
 	bounds := screen.Bounds()
@@ -90,4 +88,3 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		})
 	}
 }
-
