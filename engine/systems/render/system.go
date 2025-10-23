@@ -16,13 +16,15 @@ func (s *System) Update(*ecs.World) {}
 
 // Draw renders all entities with Position + Sprite components using the active Camera.
 func (s *System) Draw(w *ecs.World, screen *platform.Image) {
-	var cam *ecs.Camera
-	for _, e := range w.Entities {
-		if c, ok := e.Get("Camera").(*ecs.Camera); ok {
-			cam = c
-			break
-		}
+	if w == nil || screen == nil {
+		return
 	}
+	manager := w.EntitiesManager()
+	if manager == nil {
+		return
+	}
+	_, comp := manager.FirstComponent("Camera")
+	cam, _ := comp.(*ecs.Camera)
 	if cam == nil {
 		return
 	}
@@ -31,21 +33,21 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 	halfW := float64(bounds.Dx()) / 2
 	halfH := float64(bounds.Dy()) / 2
 
-	for _, e := range w.Entities {
+	manager.ForEach(func(e *ecs.Entity) {
 		pos, ok1 := e.Get("Position").(*ecs.Position)
 		sprite, ok2 := e.Get("Sprite").(*ecs.Sprite)
 		if !ok1 || !ok2 || sprite.Image == nil {
-			continue
+			return
 		}
 
 		imgW, imgH := sprite.NativeSize()
 		if imgW == 0 || imgH == 0 {
-			continue
+			return
 		}
 
 		entityScale := sprite.PixelScale()
 		if entityScale <= 0 {
-			continue
+			return
 		}
 
 		effectiveScale := cam.Scale
@@ -91,5 +93,5 @@ func (s *System) Draw(w *ecs.World, screen *platform.Image) {
 		op.Translate(finalX, finalY)
 
 		screen.DrawImage(sprite.Image, op)
-	}
+	})
 }

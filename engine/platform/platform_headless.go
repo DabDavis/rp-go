@@ -158,7 +158,10 @@ func (img *Image) FillRect(x, y, w, h int, c color.Color) {
 	if img == nil || img.rgba == nil || w <= 0 || h <= 0 {
 		return
 	}
-	rect := image.Rect(x, y, x+w, y+h)
+	rect := image.Rect(x, y, x+w, y+h).Intersect(img.rgba.Bounds())
+	if rect.Empty() {
+		return
+	}
 	draw.Draw(img.rgba, rect, &image.Uniform{C: c}, image.Point{}, draw.Src)
 }
 
