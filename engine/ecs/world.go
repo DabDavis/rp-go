@@ -1,10 +1,16 @@
 package ecs
 
 import (
+	"fmt"
 	"sort"
+	"time"
 
 	"rp-go/engine/platform"
 )
+
+/*───────────────────────────────────────────────*
+ | WORLD STRUCTURE                               |
+ *───────────────────────────────────────────────*/
 
 type World struct {
 	nextID   EntityID
@@ -31,11 +37,17 @@ type drawEntry struct {
 	order    int
 }
 
+/*───────────────────────────────────────────────*
+ | WORLD LIFECYCLE                               |
+ *───────────────────────────────────────────────*/
+
 func NewWorld() *World {
 	return &World{
-		drawBuckets:   make(map[DrawLayer][]drawEntry),
+		drawBuckets:   make(map[DrawLayer][]drawEntry, 8),
 		worldLayers:   []DrawLayer{LayerBackground, LayerWorld, LayerForeground},
 		overlayLayers: []DrawLayer{LayerHUD, LayerEntityList, LayerDebug, LayerConsole},
+		Systems:       make([]System, 0, 16),
+		Entities:      make([]*Entity, 0, 256),
 	}
 }
 
@@ -46,8 +58,14 @@ func (w *World) NewEntity() *Entity {
 	return e
 }
 
+/*───────────────────────────────────────────────*
+ | SYSTEM MANAGEMENT                             |
+ *───────────────────────────────────────────────*/
+
 func (w *World) AddSystem(s System) {
-	w.Systems = append(w.Systems, s)
+	if s == nil {
+		return
+	}
 
 	entry := systemEntry{
 		system:   s,
@@ -62,6 +80,7 @@ func (w *World) AddSystem(s System) {
 	if drawable, ok := s.(DrawableSystem); ok {
 		layer := resolveLayer(drawable)
 		w.ensureLayerRegistered(layer)
+
 		draw := drawEntry{
 			system:   drawable,
 			priority: entry.priority,
@@ -73,13 +92,31 @@ func (w *World) AddSystem(s System) {
 	}
 }
 
+/*───────────────────────────────────────────────*
+ | UPDATE LOOP                                   |
+ *───────────────────────────────────────────────*/
+
+var EnableProfiling bool // Toggle for profiling per-system timings
+
 func (w *World) Update() {
 	for _, entry := range w.systemEntries {
-		entry.system.Update(w)
+		if EnableProfiling {
+			start := time.Now()
+			entry.system.Update(w)
+			elapsed := time.Since(start)
+			if elapsed > 2*time.Millisecond {
+				fmt.Printf("[ECS] %s took %v\n", SystemName(entry.system), elapsed)
+			}
+		} else {
+			entry.system.Update(w)
+		}
 	}
 }
 
-// RemoveEntity removes the specified entity from the world immediately.
+/*───────────────────────────────────────────────*
+ | ENTITY MANAGEMENT                             |
+ *───────────────────────────────────────────────*/
+
 func (w *World) RemoveEntity(target *Entity) {
 	if w == nil || target == nil {
 		return
@@ -92,7 +129,6 @@ func (w *World) RemoveEntity(target *Entity) {
 	}
 }
 
-// RemoveEntityByID removes the entity that matches the provided ID.
 func (w *World) RemoveEntityByID(id EntityID) {
 	if w == nil {
 		return
@@ -105,49 +141,48 @@ func (w *World) RemoveEntityByID(id EntityID) {
 	}
 }
 
-// DrawWorld renders all world-space layers (background → foreground).
+/*───────────────────────────────────────────────*
+ | DRAWING PIPELINE                              |
+ *───────────────────────────────────────────────*/
+
 func (w *World) DrawWorld(screen *platform.Image) {
 	w.drawLayerGroup(screen, w.worldLayers)
 }
 
-// DrawOverlay renders all overlay layers (HUD → debug).
 func (w *World) DrawOverlay(screen *platform.Image) {
 	w.drawLayerGroup(screen, w.overlayLayers)
 }
 
-// DrawLayer renders every system registered for the supplied layer.
 func (w *World) DrawLayer(screen *platform.Image, layer DrawLayer) {
 	w.drawLayerGroup(screen, []DrawLayer{layer})
 }
 
-// DrawLayers renders each layer in sequence.
 func (w *World) DrawLayers(screen *platform.Image, layers ...DrawLayer) {
 	w.drawLayerGroup(screen, layers)
 }
 
-// SetWorldLayers overrides the draw order for world-space layers.
-func (w *World) SetWorldLayers(layers ...DrawLayer) {
-	w.worldLayers = uniqueLayers(layers)
-}
-
-// SetOverlayLayers overrides the draw order for overlay layers.
-func (w *World) SetOverlayLayers(layers ...DrawLayer) {
-	w.overlayLayers = uniqueLayers(layers)
-}
-
 func (w *World) drawLayerGroup(screen *platform.Image, layers []DrawLayer) {
+	if w == nil || screen == nil {
+		return
+	}
 	for _, layer := range layers {
-		entries := w.drawBuckets[layer]
-		for _, entry := range entries {
-			entry.system.Draw(w, screen)
+		if entries, ok := w.drawBuckets[layer]; ok {
+			for _, entry := range entries {
+				if entry.system != nil {
+					entry.system.Draw(w, screen)
+				}
+			}
 		}
 	}
 }
 
+/*───────────────────────────────────────────────*
+ | LAYER MANAGEMENT                              |
+ *───────────────────────────────────────────────*/
+
 func (w *World) ensureLayerRegistered(layer DrawLayer) {
 	if _, exists := w.drawBuckets[layer]; !exists {
 		w.drawBuckets[layer] = nil
-
 		if isOverlayLayer(layer) {
 			w.overlayLayers = appendLayerIfMissing(w.overlayLayers, layer)
 		} else {
@@ -155,6 +190,18 @@ func (w *World) ensureLayerRegistered(layer DrawLayer) {
 		}
 	}
 }
+
+func (w *World) SetWorldLayers(layers ...DrawLayer) {
+	w.worldLayers = uniqueLayers(layers)
+}
+
+func (w *World) SetOverlayLayers(layers ...DrawLayer) {
+	w.overlayLayers = uniqueLayers(layers)
+}
+
+/*───────────────────────────────────────────────*
+ | INTERNAL HELPERS                              |
+ *───────────────────────────────────────────────*/
 
 func systemPriority(s System) int {
 	if ps, ok := s.(PrioritizedSystem); ok {
@@ -211,3 +258,4 @@ func uniqueLayers(layers []DrawLayer) []DrawLayer {
 func isOverlayLayer(layer DrawLayer) bool {
 	return layer >= LayerHUD
 }
+

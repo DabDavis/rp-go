@@ -1,7 +1,8 @@
 package ai
 
 import (
-    "math"
+    "math/rand"
+    "time"
 
     "rp-go/engine/ecs"
 )

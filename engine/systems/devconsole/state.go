@@ -1,8 +1,10 @@
 package devconsole
 
 import (
-    "sync/atomic"
-    "rp-go/engine/systems/actor"
+	"sync/atomic"
+
+	"rp-go/engine/ecs"
+	"rp-go/engine/systems/actor"
 )
 
 // Global atomic flag for console visibility.
@@ -13,35 +15,35 @@ func IsOpen() bool { return consoleOpen.Load() }
 
 // ConsoleState contains all runtime data for the dev console.
 type ConsoleState struct {
-    Registry    *actor.Registry
-    Creator     ActorSpawner
-    Open        bool
-    JustOpened  bool
-    CursorTick  int
-    InputBuffer string
-    History     []string
-    HistoryIdx  int
-    LogMessages []string
+	Registry    *actor.Registry   // reference to ECS actor registry
+	Creator     ActorSpawner      // interface for spawning
+	Open        bool
+	JustOpened  bool
+	CursorTick  int
+	InputBuffer string
+	History     []string
+	HistoryIdx  int
+	LogMessages []string
 }
 
-// ActorRegistry is a minimal interface for actor lookups.
+// ActorRegistry defines a minimal interface to query actors.
 type ActorRegistry interface {
-    FindByID(id string) (*actor.Entity, bool)
-    All() []*actor.Entity
+	FindByID(id string) (*ecs.Entity, bool)
+	All() []*ecs.Entity
 }
 
 // ActorSpawner abstracts spawning from templates.
 type ActorSpawner interface {
-    Spawn(w *actor.World, template string, pos actor.Position) (*actor.Entity, error)
-    Templates() []string
+	Spawn(w *ecs.World, template string, pos ecs.Position) (*ecs.Entity, error)
+	Templates() []string
 }
 
 // Factory for initializing a fresh console state.
 func NewConsoleState(reg *actor.Registry) *ConsoleState {
-    consoleOpen.Store(false)
-    return &ConsoleState{
-        Registry:   reg,
-        HistoryIdx: -1,
-    }
+	consoleOpen.Store(false)
+	return &ConsoleState{
+		Registry:   reg,
+		HistoryIdx: -1,
+	}
 }
 

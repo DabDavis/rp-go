@@ -2,26 +2,26 @@ package ecs
 
 import "rp-go/engine/platform"
 
-// Position represents a 2D coordinate in world space.
-type Position struct{ X, Y float64 }
+/*───────────────────────────────────────────────*
+ | BASIC COMPONENTS                              |
+ *───────────────────────────────────────────────*/
 
+type Position struct{ X, Y float64 }
 func (p *Position) Name() string { return "Position" }
 
-// Velocity represents a rate of change in position.
 type Velocity struct{ VX, VY float64 }
-
 func (v *Velocity) Name() string { return "Velocity" }
 
-// Sprite is the renderable visual attached to an entity.
-// It stores a texture reference and visual transform data.
+/*───────────────────────────────────────────────*
+ | SPRITE RENDERING                              |
+ *───────────────────────────────────────────────*/
+
 type Sprite struct {
-	Image          *platform.Image // pointer to GPU texture
-	Width          int
-	Height         int
+	Image          *platform.Image
+	Width, Height  int
 	Rotation       float64
 	FlipHorizontal bool
-
-	PixelPerfect bool
+	PixelPerfect   bool
 
 	cachedImage        *platform.Image
 	cachedSourceWidth  int
@@ -33,67 +33,48 @@ type Sprite struct {
 
 func (s *Sprite) Name() string { return "Sprite" }
 
-// ensureCache synchronizes cached sprite metrics with the current image
-// and desired output size. It avoids expensive Bounds() calls on every draw
-// by recomputing only when the source image or target dimensions change.
 func (s *Sprite) ensureCache() {
 	if s == nil {
 		return
 	}
-
 	if s.cachedImage != s.Image {
-		s.cachedSourceWidth = 0
-		s.cachedSourceHeight = 0
+		s.cachedSourceWidth, s.cachedSourceHeight = 0, 0
 		s.cachedScale = 0
 	}
-
-	targetW := s.Width
-	targetH := s.Height
-
-	if s.cachedSourceWidth == 0 || s.cachedSourceHeight == 0 ||
-		s.cachedTargetWidth != targetW || s.cachedTargetHeight != targetH {
+	targetW, targetH := s.Width, s.Height
+	if s.cachedSourceWidth == 0 || s.cachedTargetWidth != targetW || s.cachedTargetHeight != targetH {
 		if s.Image != nil {
-			bounds := s.Image.Bounds()
-			s.cachedSourceWidth = bounds.Dx()
-			s.cachedSourceHeight = bounds.Dy()
-		} else {
-			s.cachedSourceWidth = 0
-			s.cachedSourceHeight = 0
+			b := s.Image.Bounds()
+			s.cachedSourceWidth, s.cachedSourceHeight = b.Dx(), b.Dy()
 		}
-
 		if s.cachedSourceWidth > 0 {
 			s.cachedScale = float64(targetW) / float64(s.cachedSourceWidth)
-		} else {
-			s.cachedScale = 0
 		}
-
-		s.cachedTargetWidth = targetW
-		s.cachedTargetHeight = targetH
+		s.cachedTargetWidth, s.cachedTargetHeight = targetW, targetH
 		s.cachedImage = s.Image
 	}
 }
 
-// NativeSize returns the intrinsic image dimensions for the sprite.
 func (s *Sprite) NativeSize() (float64, float64) {
-	if s == nil {
-		return 0, 0
-	}
 	s.ensureCache()
 	return float64(s.cachedSourceWidth), float64(s.cachedSourceHeight)
 }
 
-// PixelScale returns the ratio between the desired sprite width and the
-// intrinsic image width. This value is cached so we only recompute when the
-// sprite dimensions actually change.
 func (s *Sprite) PixelScale() float64 {
-	if s == nil {
-		return 0
-	}
 	s.ensureCache()
 	return s.cachedScale
 }
 
-// Camera defines the view transform for rendering the world.
+// DrawSize returns the sprite’s current rendered dimensions in pixels.
+func (s *Sprite) DrawSize() (float64, float64) {
+	s.ensureCache()
+	return float64(s.cachedTargetWidth), float64(s.cachedTargetHeight)
+}
+
+/*───────────────────────────────────────────────*
+ | CAMERA                                        |
+ *───────────────────────────────────────────────*/
+
 type Camera struct {
 	X, Y         float64
 	Scale        float64
@@ -104,28 +85,22 @@ type Camera struct {
 	MaxScale     float64
 	DefaultScale float64
 }
-
 func (c *Camera) Name() string { return "Camera" }
 
-// CameraTarget marks an entity as being tracked by the active camera.
 type CameraTarget struct{}
-
 func (c *CameraTarget) Name() string { return "CameraTarget" }
 
-// Actor defines metadata for players, NPCs, hostiles, and ships.
-type Actor struct {
-	ID         string // logical ID (e.g., "player", "npc_guard")
-	Archetype  string // "player", "npc", "enemy", "ship"
-	Persistent bool   // whether to keep across scene transitions
-}
+/*───────────────────────────────────────────────*
+ | ACTOR + INPUT                                 |
+ *───────────────────────────────────────────────*/
 
+type Actor struct {
+	ID         string
+	Archetype  string
+	Persistent bool
+}
 func (a *Actor) Name() string { return "Actor" }
 
-// PlayerInput marks an entity as being eligible for local input control.
-// Only one enabled PlayerInput component should be active at a time so that
-// the controller cannot steer multiple actors simultaneously.
-type PlayerInput struct {
-	Enabled bool
-}
-
+type PlayerInput struct{ Enabled bool }
 func (p *PlayerInput) Name() string { return "PlayerInput" }
+
