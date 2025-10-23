@@ -99,6 +99,3 @@ func (s *System) Update(w *ecs.World) {
 		}
 	}
 }
-
-func (s *System) Draw(*ecs.World, *platform.Image) {}
-

@@ -4,6 +4,10 @@ import "rp-go/engine/platform"
 
 type System interface {
 	Update(world *World)
+}
+
+type DrawableSystem interface {
+	System
 	Draw(world *World, screen *platform.Image)
 }
 
@@ -15,7 +19,7 @@ type PrioritizedSystem interface {
 
 // Optional: allow systems to specify which render layer they draw in.
 type LayeredSystem interface {
-	System
+	DrawableSystem
 	Layer() DrawLayer
 }
 

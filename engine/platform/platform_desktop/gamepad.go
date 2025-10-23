@@ -1,3 +1,5 @@
+//go:build !headless
+
 package platform_desktop
 
 import "github.com/hajimehoshi/ebiten/v2"
@@ -15,7 +17,7 @@ const (
 	StandardGamepadAxisLeftStickVertical   = ebiten.StandardGamepadAxisLeftStickVertical
 )
 
-func GamepadIDs() []GamepadID                            { return ebiten.GamepadIDs() }
+func GamepadIDs() []GamepadID { return ebiten.GamepadIDs() }
 func StandardGamepadAxisValue(id GamepadID, axis StandardGamepadAxis) float64 {
 	return ebiten.StandardGamepadAxisValue(id, axis)
 }
@@ -23,8 +25,15 @@ func IsStandardGamepadButtonPressed(id GamepadID, button StandardGamepadButton) 
 	return ebiten.IsStandardGamepadButtonPressed(id, button)
 }
 
-func IsGamepadLeft(id GamepadID) bool  { return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickHorizontal) < -0.5 }
-func IsGamepadRight(id GamepadID) bool { return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickHorizontal) > 0.5 }
-func IsGamepadUp(id GamepadID) bool    { return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickVertical) < -0.5 }
-func IsGamepadDown(id GamepadID) bool  { return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickVertical) > 0.5 }
-
+func IsGamepadLeft(id GamepadID) bool {
+	return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickHorizontal) < -0.5
+}
+func IsGamepadRight(id GamepadID) bool {
+	return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickHorizontal) > 0.5
+}
+func IsGamepadUp(id GamepadID) bool {
+	return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickVertical) < -0.5
+}
+func IsGamepadDown(id GamepadID) bool {
+	return ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickVertical) > 0.5
+}

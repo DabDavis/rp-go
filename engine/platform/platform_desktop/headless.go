@@ -1,3 +1,5 @@
+//go:build !headless
+
 package platform_desktop
 
 import "github.com/hajimehoshi/ebiten/v2"
@@ -12,9 +14,9 @@ type gameAdapter struct {
 	game Game
 }
 
-func (g *gameAdapter) Update() error                   { return g.game.Update() }
-func (g *gameAdapter) Draw(screen *ebiten.Image)       { g.game.Draw(newImageFromNative(screen)) }
-func (g *gameAdapter) Layout(w, h int) (int, int)      { return g.game.Layout(w, h) }
+func (g *gameAdapter) Update() error              { return g.game.Update() }
+func (g *gameAdapter) Draw(screen *ebiten.Image)  { g.game.Draw(newImageFromNative(screen)) }
+func (g *gameAdapter) Layout(w, h int) (int, int) { return g.game.Layout(w, h) }
 
 func RunGame(game Game) error {
 	return ebiten.RunGame(&gameAdapter{game: game})
@@ -34,4 +36,3 @@ func RunHeadless(game Game, frames, width, height int) error {
 	}
 	return nil
 }
-
