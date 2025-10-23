@@ -8,108 +8,25 @@ import (
 
 	"rp-go/engine/ecs"
 	"rp-go/engine/platform"
-	"rp-go/engine/ui/window"
 )
 
-// System maintains the pilot HUD window and populates its content.
-type System struct {
-	windowEntity    *ecs.Entity
-	windowComponent *window.Component
-	content         *pilotHUDContent
-}
+// System renders a lightweight heads-up display with player stats and controls.
+type System struct{}
 
-// NewSystem creates a HUD system backed by the shared window manager.
-func NewSystem() *System {
-	return &System{
-		content: &pilotHUDContent{
-			lineHeight:     16,
-			baselineOffset: 12,
-		},
-	}
-}
+// Layer ensures HUD draws before other overlay diagnostics but after world content.
+func (s *System) Layer() ecs.DrawLayer { return ecs.LayerHUD }
 
-// Update ensures the HUD window exists and refreshes its dynamic content.
-func (s *System) Update(world *ecs.World) {
-	if world == nil {
+func (s *System) Update(*ecs.World) {}
+
+func (s *System) Draw(w *ecs.World, screen *platform.Image) {
+	if screen == nil {
 		return
-	}
-
-	if s.content == nil {
-		s.content = &pilotHUDContent{
-			lineHeight:     16,
-			baselineOffset: 12,
-		}
-	}
-
-	if s.windowComponent == nil || s.windowEntity == nil || !s.windowEntity.Has("Window") {
-		s.attachWindow(world)
-	}
-
-	if s.windowComponent == nil {
-		return
-	}
-
-	s.content.Refresh(world)
-
-	padding := s.windowComponent.Padding
-	if padding < 0 {
-		padding = 0
-	}
-	titleBar := s.windowComponent.TitleBarHeight
-	if titleBar < 0 {
-		titleBar = 0
-	}
-	contentHeight := len(s.content.lines) * s.content.lineHeight
-	minimum := titleBar + padding*2
-	totalHeight := minimum + contentHeight
-	if totalHeight < minimum {
-		totalHeight = minimum
-	}
-	s.windowComponent.Bounds.Height = totalHeight
-}
-
-func (s *System) attachWindow(world *ecs.World) {
-	if world == nil {
-		return
-	}
-	entity := world.NewEntity()
-	bounds := window.Bounds{X: 16, Y: 16, Width: 320, Height: 0}
-	component := window.NewComponent("hud.pilot", "Pilot HUD", bounds, s.content)
-	component.Order = 10
-	component.Padding = 12
-	component.TitleBarHeight = 24
-	component.Background = color.RGBA{8, 12, 20, 200}
-	component.Border = color.RGBA{120, 160, 255, 180}
-	component.TitleBar = color.RGBA{25, 40, 92, 220}
-	component.TitleColor = color.RGBA{235, 244, 255, 255}
-	entity.Add(component)
-
-	s.windowEntity = entity
-	s.windowComponent = component
-}
-
-type pilotHUDContent struct {
-	lines          []string
-	lineHeight     int
-	baselineOffset int
-}
-
-func (c *pilotHUDContent) Refresh(world *ecs.World) {
-	lines := []string{
-		"Controls:",
-		"  Move: WASD / Arrow Keys",
-		"  Zoom: Mouse Wheel or +/-",
-		"  Reset Zoom: 0",
-		"  Toggle Console: F12",
 	}
 
 	var position *ecs.Position
 	var velocity *ecs.Velocity
 
-	for _, entity := range world.Entities {
-		if entity == nil {
-			continue
-		}
+	for _, entity := range w.Entities {
 		actor, _ := entity.Get("Actor").(*ecs.Actor)
 		if actor == nil || actor.ID != "player" {
 			continue
@@ -119,33 +36,41 @@ func (c *pilotHUDContent) Refresh(world *ecs.World) {
 		break
 	}
 
+	title := "Pilot HUD"
+	lines := []string{
+		"Controls:",
+		"  Move: WASD / Arrow Keys",
+		"  Zoom: Mouse Wheel or +/-",
+		"  Reset Zoom: 0",
+		"  Toggle Console: F12",
+	}
+
 	if position != nil {
-		lines = append(lines, fmt.Sprintf("Position: (%.0f, %.0f)", position.X, position.Y))
+		lines = append(lines, fmt.Sprintf("Player Position: (%.0f, %.0f)", position.X, position.Y))
 	}
 	if velocity != nil {
 		lines = append(lines, fmt.Sprintf("Velocity: (%.1f, %.1f)", velocity.VX, velocity.VY))
 	}
 
-	c.lines = lines
-}
+	lineHeight := 16
+	padding := 12
+	titleBaseline := padding + 10
 
-func (c *pilotHUDContent) Draw(world *ecs.World, canvas *platform.Image, bounds window.Bounds) {
-	if canvas == nil {
-		return
-	}
-	if len(c.lines) == 0 {
-		return
+	width := 260
+	height := padding*2 + lineHeight + len(lines)*lineHeight
+
+	overlay := platform.NewImage(width, height)
+	overlay.FillRect(0, 0, width, height, color.RGBA{0, 0, 0, 170})
+
+	platform.DrawText(overlay, title, basicfont.Face7x13, padding, titleBaseline, color.RGBA{200, 220, 255, 255})
+
+	y := titleBaseline + lineHeight
+	for _, line := range lines {
+		platform.DrawText(overlay, line, basicfont.Face7x13, padding, y, color.White)
+		y += lineHeight
 	}
 
-	baseline := bounds.Y + c.baselineOffset
-	lineHeight := c.lineHeight
-	textX := bounds.X
-	if textX < 0 {
-		textX = 0
-	}
-
-	for _, line := range c.lines {
-		platform.DrawText(canvas, line, basicfont.Face7x13, textX, baseline, color.White)
-		baseline += lineHeight
-	}
+	op := platform.NewDrawImageOptions()
+	op.Translate(16, 16)
+	screen.DrawImage(overlay, op)
 }
