@@ -1,114 +1,61 @@
 package windowmgr
 
 import (
-	"sort"
 	"sync"
 
 	"rp-go/engine/ecs"
 	"rp-go/engine/ui/window"
 )
 
-// Registry stores window components grouped by draw layer for consumption by
-// renderers. It does not perform any rendering itself.
+// Registry stores the latest window components by draw layer.
 type Registry struct {
-	mu         sync.RWMutex
-	layers     map[ecs.DrawLayer][]*window.Component
-	layerOrder []ecs.DrawLayer
+	mu      sync.RWMutex
+	windows map[ecs.DrawLayer][]*window.Component
 }
 
-// NewRegistry creates an empty registry instance.
-func NewRegistry() *Registry {
-	return &Registry{
-		layers:     make(map[ecs.DrawLayer][]*window.Component),
-		layerOrder: make([]ecs.DrawLayer, 0, 8),
-	}
-}
-
-// Reset clears all registered windows while preserving the allocated slices so
-// they can be reused on subsequent frames.
-func (r *Registry) Reset() {
-	if r == nil {
-		return
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	for layer, slice := range r.layers {
-		for i := range slice {
-			slice[i] = nil
-		}
-		r.layers[layer] = r.layers[layer][:0]
-	}
-	r.layerOrder = r.layerOrder[:0]
-}
-
-// Add registers a window component for a given draw layer.
+// Add registers a window for the specified layer.
 func (r *Registry) Add(layer ecs.DrawLayer, comp *window.Component) {
-	if r == nil || comp == nil {
-		return
-	}
-	r.add(layer, comp)
-}
-
-// add inserts the component for the provided layer. Callers must ensure comp is
-// non-nil; the public Add helper enforces this.
-func (r *Registry) add(layer ecs.DrawLayer, comp *window.Component) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, ok := r.layers[layer]; !ok {
-		r.layers[layer] = make([]*window.Component, 0, 4)
-		r.layerOrder = append(r.layerOrder, layer)
-	}
-	r.layers[layer] = append(r.layers[layer], comp)
-}
-
-// Finalize sorts window entries inside each layer to guarantee stable output
-// for renderers consuming the registry.
-func (r *Registry) Finalize() {
-	if r == nil {
+	if comp == nil {
 		return
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-
-	for layer, windows := range r.layers {
-		sort.SliceStable(windows, func(i, j int) bool {
-			if windows[i].Order == windows[j].Order {
-				return windows[i].ID < windows[j].ID
-			}
-			return windows[i].Order < windows[j].Order
-		})
-		r.layers[layer] = windows
+	if r.windows == nil {
+		r.windows = make(map[ecs.DrawLayer][]*window.Component)
 	}
+	r.windows[layer] = append(r.windows[layer], comp)
 }
 
-// Layers returns the list of draw layers currently holding visible windows.
-func (r *Registry) Layers() []ecs.DrawLayer {
-	if r == nil {
-		return nil
-	}
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	result := make([]ecs.DrawLayer, len(r.layerOrder))
-	copy(result, r.layerOrder)
-	return result
-}
-
-// Windows returns a copy of the ordered windows for the provided layer.
+// Windows returns all windows for the given layer.
 func (r *Registry) Windows(layer ecs.DrawLayer) []*window.Component {
-	if r == nil {
-		return nil
-	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-
-	src := r.layers[layer]
-	if len(src) == 0 {
-		return nil
-	}
-	out := make([]*window.Component, len(src))
-	copy(out, src)
-	return out
+	return append([]*window.Component(nil), r.windows[layer]...)
 }
+
+// Clear removes all windows.
+func (r *Registry) Clear() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.windows = make(map[ecs.DrawLayer][]*window.Component)
+}
+
+/* -------------------------------------------------------------------------- */
+/*                             Shared Registry API                            */
+/* -------------------------------------------------------------------------- */
+
+var (
+	sharedRegistry *Registry
+	once           sync.Once
+)
+
+// SharedRegistry returns the global singleton registry instance.
+func SharedRegistry() *Registry {
+	once.Do(func() {
+		sharedRegistry = &Registry{
+			windows: make(map[ecs.DrawLayer][]*window.Component),
+		}
+	})
+	return sharedRegistry
+}
+
