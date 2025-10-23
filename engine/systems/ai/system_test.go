@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"rp-go/engine/ecs"
+	actor "rp-go/engine/systems/actor"
 )
 
 func TestAISystemFollowBehavior(t *testing.T) {
@@ -25,7 +26,7 @@ func TestAISystemFollowBehavior(t *testing.T) {
 		},
 	})
 
-	system := &System{}
+	system := NewSystem()
 	system.Update(w)
 
 	vel, _ := follower.Get("Velocity").(*ecs.Velocity)
@@ -56,7 +57,7 @@ func TestAISystemPursueEngageDistance(t *testing.T) {
 		},
 	})
 
-	system := &System{}
+	system := NewSystem()
 	system.Update(w)
 
 	vel, _ := chaser.Get("Velocity").(*ecs.Velocity)
@@ -97,7 +98,7 @@ func TestAISystemPatrolPingPong(t *testing.T) {
 	ai.PatrolState.Reset()
 	entity.Add(ai)
 
-	system := &System{}
+	system := NewSystem()
 	system.Update(w)
 
 	if ai.PatrolState.Index != 1 {
@@ -141,7 +142,7 @@ func TestAISystemRetreatStopsAfterSafeDistance(t *testing.T) {
 		},
 	})
 
-	system := &System{}
+	system := NewSystem()
 	system.Update(w)
 
 	vel, _ := runner.Get("Velocity").(*ecs.Velocity)
@@ -180,7 +181,7 @@ func TestAISystemTravelOnceCompletes(t *testing.T) {
 	ai.TravelState.Index = 1
 	traveler.Add(ai)
 
-	system := &System{}
+	system := NewSystem()
 	system.Update(w)
 
 	if !ai.TravelState.Completed {
@@ -190,5 +191,36 @@ func TestAISystemTravelOnceCompletes(t *testing.T) {
 	vel, _ := traveler.Get("Velocity").(*ecs.Velocity)
 	if vel == nil || vel.VX != 0 || vel.VY != 0 {
 		t.Fatalf("expected traveler to stop after completing path, got %+v", vel)
+	}
+}
+
+func TestAISystemUsesActorLookup(t *testing.T) {
+	w := ecs.NewWorld()
+
+	actorSystem := actor.NewSystem()
+
+	target := w.NewEntity()
+	target.Add(&ecs.Actor{ID: "player", Archetype: "player"})
+	target.Add(&ecs.Position{X: 50, Y: 0})
+
+	pursuer := w.NewEntity()
+	pursuer.Add(&ecs.Position{X: 0, Y: 0})
+	pursuer.Add(&ecs.Velocity{})
+	pursuer.Add(&ecs.AIController{
+		Pursue: &ecs.AIPursueBehavior{
+			Target: "player",
+			Speed:  2,
+		},
+	})
+
+	actorSystem.Update(w)
+
+	system := NewSystem()
+	system.SetActorLookup(actorSystem.Registry())
+	system.Update(w)
+
+	vel, _ := pursuer.Get("Velocity").(*ecs.Velocity)
+	if vel == nil || vel.VX <= 0 {
+		t.Fatalf("expected pursuer to chase player using registry lookup, got %+v", vel)
 	}
 }

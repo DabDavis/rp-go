@@ -1,7 +1,7 @@
 {
   "actors": [
     {
-      "name": "dark-elf-ship-1",
+      "name": "dark-elf-ship-scout",
       "archetype": "enemy",
       "persistent": false,
       "sprite": {
@@ -13,6 +13,92 @@
       "velocity": {
         "vx": 0,
         "vy": 0
+      },
+      "ai": {
+        "speed": 2.8,
+        "patrol": {
+          "variant": "loop",
+          "speed": 2.8,
+          "waypoints": [
+            {"x": 240, "y": 220},
+            {"x": 320, "y": 260},
+            {"x": 400, "y": 220},
+            {"x": 320, "y": 180}
+          ]
+        }
+      }
+    },
+    {
+      "name": "dark-elf-ship-vanguard",
+      "archetype": "enemy",
+      "persistent": false,
+      "sprite": {
+        "image": "assets/entities/dark-elf-ship-1.png",
+        "width": 64,
+        "height": 64,
+        "pixel_perfect": true
+      },
+      "velocity": {
+        "vx": 0,
+        "vy": 0
+      },
+      "ai": {
+        "speed": 3.3,
+        "pursue": {
+          "target": "player",
+          "engage_distance": 280,
+          "speed": 3.6
+        }
+      }
+    },
+    {
+      "name": "dark-elf-ship-raider",
+      "archetype": "enemy",
+      "persistent": false,
+      "sprite": {
+        "image": "assets/entities/dark-elf-ship-1.png",
+        "width": 64,
+        "height": 64,
+        "pixel_perfect": true
+      },
+      "velocity": {
+        "vx": 0,
+        "vy": 0
+      },
+      "ai": {
+        "speed": 3.0,
+        "follow": {
+          "target": "player",
+          "offset_x": -96,
+          "offset_y": -48,
+          "min_distance": 48,
+          "max_distance": 200,
+          "speed": 3.2
+        }
+      }
+    },
+    {
+      "name": "dark-elf-ship-evader",
+      "archetype": "enemy",
+      "persistent": false,
+      "sprite": {
+        "image": "assets/entities/dark-elf-ship-1.png",
+        "width": 64,
+        "height": 64,
+        "pixel_perfect": true
+      },
+      "velocity": {
+        "vx": 0,
+        "vy": 0
+      },
+      "ai": {
+        "speed": 3.1,
+        "retreat": {
+          "target": "player",
+          "trigger_distance": 220,
+          "safe_distance": 320,
+          "speed": 3.4
+        }
       }
     },
     {
@@ -28,6 +114,23 @@
       "velocity": {
         "vx": 0,
         "vy": 0
+      },
+      "ai": {
+        "speed": 2.6,
+        "travel": {
+          "variant": "pingpong",
+          "speed": 2.4,
+          "waypoints": [
+            {"x": 280, "y": 160},
+            {"x": 440, "y": 220}
+          ]
+        },
+        "retreat": {
+          "target": "player",
+          "trigger_distance": 180,
+          "safe_distance": 320,
+          "speed": 2.8
+        }
       }
     }
   ]

@@ -44,6 +44,7 @@ func (s *Scene) Init(w *ecs.World) {
 	})
 	ship.Add(&ecs.Position{X: 100, Y: 100})
 	ship.Add(&ecs.Velocity{})
+	ship.Add(&ecs.PlayerInput{Enabled: true})
 	ship.Add(&ecs.CameraTarget{})
 
 	shipImg := gfx.LoadImage("assets/entities/ship.png")
@@ -78,17 +79,25 @@ func (s *Scene) Init(w *ecs.World) {
 	fmt.Printf("[SCENE] Planet entity created (ID %d)\n", planet.ID)
 
 	// === Dark Elf Patrol ===
-	for i := 0; i < 5; i++ {
+	templates := []string{
+		"dark-elf-ship-scout",
+		"dark-elf-ship-vanguard",
+		"dark-elf-ship-raider",
+		"dark-elf-ship-evader",
+		"dark-elf-ship-commander",
+	}
+
+	for i, template := range templates {
 		spawnX := 260 + float64(i*72)
 		spawnY := 220.0
-		enemy, err := s.actorCreator.Spawn(w, "dark-elf-ship-1", ecs.Position{X: spawnX, Y: spawnY})
+		enemy, err := s.actorCreator.Spawn(w, template, ecs.Position{X: spawnX, Y: spawnY})
 		if err != nil {
 			fmt.Printf("[SCENE] Failed to spawn patrol ship: %v\n", err)
 			continue
 		}
 		if actor := enemy.Get("Actor"); actor != nil {
 			if meta, ok := actor.(*ecs.Actor); ok {
-				fmt.Printf("[SCENE] Spawned patrol ship %s (entity %d)\n", meta.ID, enemy.ID)
+				fmt.Printf("[SCENE] Spawned %s (%s) with AI (entity %d)\n", meta.ID, template, enemy.ID)
 			}
 		}
 	}
