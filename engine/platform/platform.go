@@ -6,14 +6,14 @@ import "rp-go/engine/platform/platform_desktop"
 
 // Re-export types
 type (
-	Image                  = platform_desktop.Image
-	DrawImageOptions       = platform_desktop.DrawImageOptions
-	Filter                 = platform_desktop.Filter
-	Key                    = platform_desktop.Key
-	GamepadID              = platform_desktop.GamepadID
-	StandardGamepadAxis    = platform_desktop.StandardGamepadAxis
-	StandardGamepadButton  = platform_desktop.StandardGamepadButton
-	Game                   = platform_desktop.Game
+	Image                 = platform_desktop.Image
+	DrawImageOptions      = platform_desktop.DrawImageOptions
+	Filter                = platform_desktop.Filter
+	Key                   = platform_desktop.Key
+	GamepadID             = platform_desktop.GamepadID
+	StandardGamepadAxis   = platform_desktop.StandardGamepadAxis
+	StandardGamepadButton = platform_desktop.StandardGamepadButton
+	Game                  = platform_desktop.Game
 )
 
 // Re-export constructors and functions
@@ -24,15 +24,16 @@ var (
 
 	IsKeyPressed     = platform_desktop.IsKeyPressed
 	IsKeyJustPressed = platform_desktop.IsKeyJustPressed
+	InputChars       = platform_desktop.InputChars
 
-	GamepadIDs        = platform_desktop.GamepadIDs
-	IsGamepadLeft     = platform_desktop.IsGamepadLeft
-	IsGamepadRight    = platform_desktop.IsGamepadRight
-	IsGamepadUp       = platform_desktop.IsGamepadUp
-	IsGamepadDown     = platform_desktop.IsGamepadDown
+	GamepadIDs     = platform_desktop.GamepadIDs
+	IsGamepadLeft  = platform_desktop.IsGamepadLeft
+	IsGamepadRight = platform_desktop.IsGamepadRight
+	IsGamepadUp    = platform_desktop.IsGamepadUp
+	IsGamepadDown  = platform_desktop.IsGamepadDown
 
 	IsStandardGamepadLayoutAvailable = platform_desktop.IsStandardGamepadLayoutAvailable
-        StandardGamepadAxisValue         = platform_desktop.StandardGamepadAxisValue
+	StandardGamepadAxisValue         = platform_desktop.StandardGamepadAxisValue
 
 	SetWindowSize  = platform_desktop.SetWindowSize
 	SetWindowTitle = platform_desktop.SetWindowTitle
@@ -65,10 +66,13 @@ const (
 	KeyKP0        = platform_desktop.KeyKP0
 	KeyKPAdd      = platform_desktop.KeyKPAdd
 	KeyKPSubtract = platform_desktop.KeyKPSubtract
+	KeyEnter      = platform_desktop.KeyEnter
+	KeyEscape     = platform_desktop.KeyEscape
+	KeyBackspace  = platform_desktop.KeyBackspace
+	KeyF12        = platform_desktop.KeyF12
 
 	StandardGamepadAxisLeftStickHorizontal = platform_desktop.StandardGamepadAxisLeftStickHorizontal
-        StandardGamepadAxisLeftStickVertical   = platform_desktop.StandardGamepadAxisLeftStickVertical
+	StandardGamepadAxisLeftStickVertical   = platform_desktop.StandardGamepadAxisLeftStickVertical
 
 	FilterNearest = platform_desktop.FilterNearest
 )
-
