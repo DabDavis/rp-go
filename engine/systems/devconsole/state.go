@@ -16,15 +16,16 @@ func IsOpen() bool { return consoleOpen.Load() }
 
 // ConsoleState contains all runtime data for the dev console.
 type ConsoleState struct {
-	Registry    *actor.Registry // reference to ECS actor registry
-	Creator     ActorSpawner    // interface for spawning
-	Open        bool
-	JustOpened  bool
-	CursorTick  int
-	InputBuffer string
-	History     []string
-	HistoryIdx  int
-	LogMessages []string
+	Registry       *actor.Registry // reference to ECS actor registry
+	Creator        ActorSpawner    // interface for spawning
+	CreatorFactory func() ActorSpawner
+	Open           bool
+	JustOpened     bool
+	CursorTick     int
+	InputBuffer    string
+	History        []string
+	HistoryIdx     int
+	LogMessages    []string
 
 	windowEntity    *ecs.Entity
 	windowComponent *window.Component
@@ -44,10 +45,22 @@ type ActorSpawner interface {
 }
 
 // Factory for initializing a fresh console state.
-func NewConsoleState(reg *actor.Registry) *ConsoleState {
+func NewConsoleState(reg *actor.Registry, factory func() ActorSpawner) *ConsoleState {
 	consoleOpen.Store(false)
 	return &ConsoleState{
-		Registry:   reg,
-		HistoryIdx: -1,
+		Registry:       reg,
+		CreatorFactory: factory,
+		HistoryIdx:     -1,
 	}
+}
+
+// SetCreatorFactory updates the function used to lazily construct an ActorCreator.
+func (s *ConsoleState) SetCreatorFactory(factory func() ActorSpawner) {
+	s.CreatorFactory = factory
+	s.ResetCreator()
+}
+
+// ResetCreator clears the cached actor creator so it will be rebuilt on demand.
+func (s *ConsoleState) ResetCreator() {
+	s.Creator = nil
 }

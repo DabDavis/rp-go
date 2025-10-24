@@ -3,9 +3,9 @@ package debug
 import (
 	"fmt"
 	"image/color"
+
 	"rp-go/engine/ecs"
 	"rp-go/engine/platform"
-	"rp-go/engine/systems/ai"
 	"rp-go/engine/ui/window"
 
 	"golang.org/x/image/font/basicfont"
@@ -48,7 +48,7 @@ func (o *BehaviorDebugOverlay) Draw(world *ecs.World, screen *platform.Image, bo
 		return
 	}
 
-	ctrl, _ := o.selected.Get("AIController").(*ai.AIController)
+	ctrl, _ := o.selected.Get("AIController").(*ecs.AIController)
 	if ctrl == nil {
 		return
 	}
@@ -69,4 +69,3 @@ func (o *BehaviorDebugOverlay) Draw(world *ecs.World, screen *platform.Image, bo
 func (o *BehaviorDebugOverlay) SetSelected(e *ecs.Entity) {
 	o.selected = e
 }
-

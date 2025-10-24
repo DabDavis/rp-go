@@ -13,14 +13,14 @@ import (
 )
 
 /*───────────────────────────────────────────────*
- | DATA SYSTEM                                   |
- *───────────────────────────────────────────────*/
+| DATA SYSTEM                                   |
+*───────────────────────────────────────────────*/
 
 // System manages engine-wide configuration, JSON databases, and live reloads.
 type System struct {
-	Config     data.RenderConfig   // Render config
-	Actors     data.ActorDatabase  // Actor definitions
-	AICatalog  data.AIActionCatalog // AI behavior definitions
+	Config    data.RenderConfig    // Render config
+	Actors    data.ActorDatabase   // Actor definitions
+	AICatalog data.AIActionCatalog // AI behavior definitions
 
 	reloadMgr  *HotReloadManager
 	subscriber *DataSubscriber
@@ -41,8 +41,8 @@ func NewSystem() *System {
 }
 
 /*───────────────────────────────────────────────*
- | LIFECYCLE                                     |
- *───────────────────────────────────────────────*/
+| LIFECYCLE                                     |
+*───────────────────────────────────────────────*/
 
 func (s *System) Update(world *ecs.World) {
 	if s.reloadMgr == nil {
@@ -85,8 +85,8 @@ func (s *System) ReloadAll(world *ecs.World) {
 }
 
 /*───────────────────────────────────────────────*
- | RELOAD LOGIC                                  |
- *───────────────────────────────────────────────*/
+| RELOAD LOGIC                                  |
+*───────────────────────────────────────────────*/
 
 func (s *System) reloadFile(world *ecs.World, path string) {
 	s.mu.Lock()
@@ -141,8 +141,8 @@ func (s *System) ensureLoaded() {
 }
 
 /*───────────────────────────────────────────────*
- | MANAGEMENT                                    |
- *───────────────────────────────────────────────*/
+| MANAGEMENT                                    |
+*───────────────────────────────────────────────*/
 
 func (s *System) RegisterDataFile(kind string, path string) {
 	s.reloadMgr.Watch(path)
@@ -151,9 +151,29 @@ func (s *System) RegisterDataFile(kind string, path string) {
 
 func (s *System) Subscriber() *DataSubscriber { return s.subscriber }
 
+// ActorDatabase returns a deep copy of the current actor database.
+func (s *System) ActorDatabase() data.ActorDatabase {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	db := data.ActorDatabase{Actors: make([]data.ActorTemplate, len(s.Actors.Actors))}
+	for i, tpl := range s.Actors.Actors {
+		copyTpl := tpl
+		if tpl.Velocity != nil {
+			v := *tpl.Velocity
+			copyTpl.Velocity = &v
+		}
+		if len(tpl.AIRefs) > 0 {
+			copyTpl.AIRefs = append([]string(nil), tpl.AIRefs...)
+		}
+		db.Actors[i] = copyTpl
+	}
+	return db
+}
+
 /*───────────────────────────────────────────────*
- | HOT RELOAD MANAGER                            |
- *───────────────────────────────────────────────*/
+| HOT RELOAD MANAGER                            |
+*───────────────────────────────────────────────*/
 
 type HotReloadManager struct {
 	mu    sync.RWMutex
@@ -193,4 +213,3 @@ func (h *HotReloadManager) CheckChanges() []string {
 	}
 	return changed
 }
-

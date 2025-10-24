@@ -13,12 +13,12 @@ import (
 	"rp-go/engine/systems/devconsole"
 	"rp-go/engine/systems/render"
 	"rp-go/engine/systems/scene"
-	"rp-go/engine/systems/ui"
+	"rp-go/engine/systems/windowmgr"
 )
 
 /*───────────────────────────────────────────────*
- | WORLD INITIALIZATION                          |
- *───────────────────────────────────────────────*/
+| WORLD INITIALIZATION                          |
+*───────────────────────────────────────────────*/
 
 // InitWorld constructs and wires up all ECS systems and the event bus.
 func InitWorld() *ecs.World {
@@ -32,8 +32,8 @@ func InitWorld() *ecs.World {
 	fmt.Println("[WORLD] Event bus initialized")
 
 	/*───────────────────────────────────────────────*
-	 | CORE SYSTEMS                                 |
-	 *───────────────────────────────────────────────*/
+	| CORE SYSTEMS                                 |
+	*───────────────────────────────────────────────*/
 
 	dataSys := data.NewSystem()
 	w.AddSystem(dataSys)
@@ -47,20 +47,22 @@ func InitWorld() *ecs.World {
 	renderSys := render.NewSystem()
 	w.AddSystem(renderSys)
 
-	uiSys := ui.NewSystem()
-	w.AddSystem(uiSys)
+	windowMgrSys := windowmgr.NewSystem()
+	w.AddSystem(windowMgrSys)
 
 	sceneSys := &scene.Manager{}
 	w.AddSystem(sceneSys)
 
-	consoleSys := devconsole.NewSystem()
+	consoleSys := devconsole.NewSystem(nil, func() devconsole.ActorSpawner {
+		return NewActorCreator(dataSys.ActorDatabase())
+	}, devconsole.Config{})
 	w.AddSystem(consoleSys)
 
 	fmt.Println("[WORLD] Core systems registered")
 
 	/*───────────────────────────────────────────────*
-	 | DATA-DEPENDENT LINKING                        |
-	 *───────────────────────────────────────────────*/
+	| DATA-DEPENDENT LINKING                        |
+	*───────────────────────────────────────────────*/
 
 	// Subscribe systems to reload events
 	events.Subscribe(bus, func(e events.DataReloaded) {
@@ -73,21 +75,24 @@ func InitWorld() *ecs.World {
 		if composerSys != nil {
 			composerSys.OnDataReload(e)
 		}
+		if consoleSys != nil {
+			consoleSys.OnDataReload(e)
+		}
 	})
 
 	fmt.Println("[WORLD] Data reload subscriptions active")
 
 	/*───────────────────────────────────────────────*
-	 | FINALIZATION                                  |
-	 *───────────────────────────────────────────────*/
+	| FINALIZATION                                  |
+	*───────────────────────────────────────────────*/
 
 	fmt.Println("[WORLD] Initialization complete")
 	return w
 }
 
 /*───────────────────────────────────────────────*
- | ENTRY-POINT HELPERS                            |
- *───────────────────────────────────────────────*/
+| ENTRY-POINT HELPERS                            |
+*───────────────────────────────────────────────*/
 
 // RunWorld starts the main update/draw loop.
 func RunWorld(w *ecs.World, screen *platform.Image) {
@@ -108,4 +113,3 @@ func RunWorld(w *ecs.World, screen *platform.Image) {
 		}
 	}
 }
-

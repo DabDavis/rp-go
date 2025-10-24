@@ -2,6 +2,7 @@ package devconsole
 
 import (
 	"rp-go/engine/ecs"
+	"rp-go/engine/events"
 	"rp-go/engine/systems/actor"
 )
 
@@ -44,9 +45,9 @@ type System struct {
 }
 
 // NewSystem initializes a new developer console bound to the shared actor registry.
-func NewSystem(reg *actor.Registry, cfg Config) *System {
+func NewSystem(reg *actor.Registry, factory func() ActorSpawner, cfg Config) *System {
 	cfg.normalize()
-	cs := NewConsoleState(reg)
+	cs := NewConsoleState(reg, factory)
 	return &System{state: cs, cfg: cfg}
 }
 
@@ -59,4 +60,15 @@ func (s *System) Update(w *ecs.World) {
 	s.state.UpdateInput(w)
 	s.state.syncWindowVisibility()
 	s.state.applyLayout(s.cfg)
+}
+
+// OnDataReload resets the cached actor creator when actor data changes.
+func (s *System) OnDataReload(e events.DataReloaded) {
+	if s == nil || s.state == nil {
+		return
+	}
+	switch e.Type {
+	case "actor_db", "all":
+		s.state.ResetCreator()
+	}
 }

@@ -13,8 +13,8 @@ import (
 )
 
 /*───────────────────────────────────────────────*
- | DEBUG WINDOW STRUCTURE                        |
- *───────────────────────────────────────────────*/
+| DEBUG WINDOW STRUCTURE                        |
+*───────────────────────────────────────────────*/
 
 // DebugWindow displays a real-time list of AI-composed entities
 // and their currently bound AI actions.
@@ -25,8 +25,8 @@ type DebugWindow struct {
 }
 
 /*───────────────────────────────────────────────*
- | CONSTRUCTION / VISIBILITY                     |
- *───────────────────────────────────────────────*/
+| CONSTRUCTION / VISIBILITY                     |
+*───────────────────────────────────────────────*/
 
 // NewDebugWindow constructs a new AI Composer debug overlay.
 func NewDebugWindow() *DebugWindow {
@@ -86,8 +86,8 @@ func (w *DebugWindow) Hide() {
 }
 
 /*───────────────────────────────────────────────*
- | CONTENT RENDERER                              |
- *───────────────────────────────────────────────*/
+| CONTENT RENDERER                              |
+*───────────────────────────────────────────────*/
 
 type ComposerDebugContent struct {
 	lines          []string
@@ -96,8 +96,8 @@ type ComposerDebugContent struct {
 }
 
 /*───────────────────────────────────────────────*
- | REFRESH LOGIC                                 |
- *───────────────────────────────────────────────*/
+| REFRESH LOGIC                                 |
+*───────────────────────────────────────────────*/
 
 // Refresh rebuilds the entity/action list from the composer state.
 func (c *ComposerDebugContent) Refresh(world *ecs.World, composer *System) {
@@ -130,39 +130,30 @@ func (c *ComposerDebugContent) Refresh(world *ecs.World, composer *System) {
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 
-	// Lookup each entity safely
-	manager := world.EntitiesManager()
-	if manager == nil {
-		c.lines = []string{"(no entity manager available)"}
-		return
-	}
-
-	manager.ForEach(func(e *ecs.Entity) {
-		if e == nil {
-			return
-		}
-		if !composer.processed[e.ID] {
-			return
+	for _, id := range ids {
+		entity := world.GetEntity(id)
+		if entity == nil {
+			continue
 		}
 
-		act, _ := e.Get("Actor").(*ecs.Actor)
-		ctrl, _ := e.Get("AIController").(*ecs.AIController)
+		act, _ := entity.Get("Actor").(*ecs.Actor)
+		ctrl, _ := entity.Get("AIController").(*ecs.AIController)
 		if act == nil || ctrl == nil {
-			return
+			continue
 		}
 
-		lines = append(lines, fmt.Sprintf("[%3d] %-18s (%d actions)", e.ID, act.ID, len(ctrl.Actions)))
+		lines = append(lines, fmt.Sprintf("[%3d] %-18s (%d actions)", entity.ID, act.ID, len(ctrl.Actions)))
 		for _, a := range ctrl.Actions {
 			lines = append(lines, fmt.Sprintf("   • %s [%s]", a.Name, a.Type))
 		}
-	})
+	}
 
 	c.lines = lines
 }
 
 /*───────────────────────────────────────────────*
- | DRAW FUNCTION                                 |
- *───────────────────────────────────────────────*/
+| DRAW FUNCTION                                 |
+*───────────────────────────────────────────────*/
 
 func (c *ComposerDebugContent) Draw(_ *ecs.World, dst *platform.Image, bounds window.Bounds) {
 	if dst == nil || len(c.lines) == 0 {
@@ -177,8 +168,8 @@ func (c *ComposerDebugContent) Draw(_ *ecs.World, dst *platform.Image, bounds wi
 }
 
 /*───────────────────────────────────────────────*
- | SIZE HELPER                                   |
- *───────────────────────────────────────────────*/
+| SIZE HELPER                                   |
+*───────────────────────────────────────────────*/
 
 func (c *ComposerDebugContent) estimateHeight() int {
 	h := len(c.lines)*c.lineHeight + 32
@@ -187,4 +178,3 @@ func (c *ComposerDebugContent) estimateHeight() int {
 	}
 	return h
 }
-

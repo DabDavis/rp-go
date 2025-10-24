@@ -8,8 +8,8 @@ import (
 )
 
 /*───────────────────────────────────────────────*
- | SCRIPTED BEHAVIOR SEQUENCES                   |
- *───────────────────────────────────────────────*/
+| SCRIPTED BEHAVIOR SEQUENCES                   |
+*───────────────────────────────────────────────*/
 
 // ScriptStep represents one step in a scripted AI sequence.
 type ScriptStep struct {
@@ -21,16 +21,16 @@ type ScriptStep struct {
 // behaviorScript executes a JSON-defined sequence of sub-actions.
 // Example in ai.json:
 //
-// {
-//   "name": "patrol_then_retreat",
-//   "type": "script",
-//   "params": {
-//     "steps": [
-//       {"action": "patrol_square"},
-//       {"action": "retreat_if_damaged", "delay_ms": 500}
-//     ]
-//   }
-// }
+//	{
+//	  "name": "patrol_then_retreat",
+//	  "type": "script",
+//	  "params": {
+//	    "steps": [
+//	      {"action": "patrol_square"},
+//	      {"action": "retreat_if_damaged", "delay_ms": 500}
+//	    ]
+//	  }
+//	}
 func (s *System) behaviorScript(
 	w *ecs.World,
 	e *ecs.Entity,
@@ -86,4 +86,3 @@ func (s *System) behaviorScript(
 	}
 	return executed
 }
-
