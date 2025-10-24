@@ -3,6 +3,7 @@ package ecs
 import (
 	"fmt"
 	"rp-go/engine/platform"
+	"time"
 )
 
 /*───────────────────────────────────────────────*
@@ -24,9 +25,11 @@ func (t Tag) Name() string { return string(t) }
  *───────────────────────────────────────────────*/
 
 type Position struct{ X, Y float64 }
+
 func (p *Position) Name() string { return "Position" }
 
 type Velocity struct{ VX, VY float64 }
+
 func (v *Velocity) Name() string { return "Velocity" }
 
 /*───────────────────────────────────────────────*
@@ -101,9 +104,11 @@ type Camera struct {
 	MaxScale     float64
 	DefaultScale float64
 }
+
 func (c *Camera) Name() string { return "Camera" }
 
 type CameraTarget struct{}
+
 func (c *CameraTarget) Name() string { return "CameraTarget" }
 
 /*───────────────────────────────────────────────*
@@ -114,10 +119,13 @@ type Actor struct {
 	ID         string
 	Archetype  string
 	Persistent bool
+	AIRefs     []string // <-- used by AIComposer
 }
+
 func (a *Actor) Name() string { return "Actor" }
 
 type PlayerInput struct{ Enabled bool }
+
 func (p *PlayerInput) Name() string { return "PlayerInput" }
 
 /*───────────────────────────────────────────────*
@@ -128,6 +136,7 @@ type Health struct {
 	Current float64
 	Max     float64
 }
+
 func (h *Health) Name() string { return "Health" }
 
 func (h *Health) Fraction() float64 {
@@ -136,12 +145,14 @@ func (h *Health) Fraction() float64 {
 	}
 	return h.Current / h.Max
 }
+
 func (h *Health) ApplyDamage(amount float64) {
 	h.Current -= amount
 	if h.Current < 0 {
 		h.Current = 0
 	}
 }
+
 func (h *Health) Heal(amount float64) {
 	h.Current += amount
 	if h.Current > h.Max {
@@ -153,11 +164,12 @@ func (h *Health) Heal(amount float64) {
  | SCRIPT STATE (for AI scripts)                 |
  *───────────────────────────────────────────────*/
 
+// ScriptState tracks multi-step scripted AI progress.
 type ScriptState struct {
-	Step   int
-	Timer  float64
-	Active bool
+	Current int
+	NextAt  time.Time
 }
+
 func (s *ScriptState) Name() string { return "AIScriptState" }
 
 /*───────────────────────────────────────────────*
@@ -179,9 +191,7 @@ func (e *Entity) AddNamed(name string, c Component) {
  | GENERIC COMPONENT ACCESS                      |
  *───────────────────────────────────────────────*/
 
-// GetTyped is a standalone helper that retrieves a component as a typed value.
-// Example:
-//   vel := ecs.GetTyped[*ecs.Velocity](entity, "Velocity")
+// GetTyped retrieves a named component as a strongly typed value.
 func GetTyped[T Component](e *Entity, name string) T {
 	var zero T
 	if e == nil {

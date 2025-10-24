@@ -32,8 +32,8 @@ func (s *System) checkConditions(w *ecs.World, e *ecs.Entity, cond map[string]an
 	c.HealthMore = getFloat(cond, "health_gt", 0)
 
 	// Check health
-	if hp, ok := e.Get("Health").(*ecs.Health); ok && hp != nil {
-		val := hp.Value / hp.Max
+	if hp, ok := e.Get("Health").(*ecs.Health); ok && hp != nil && hp.Max > 0 {
+		val := hp.Current / hp.Max
 		if c.HealthLess > 0 && val >= c.HealthLess {
 			return false
 		}

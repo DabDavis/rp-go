@@ -13,6 +13,10 @@ import (
 	"rp-go/engine/platform"
 )
 
+/*───────────────────────────────────────────────*
+ | AI SYSTEM CORE                                |
+ *───────────────────────────────────────────────*/
+
 type System struct {
 	mu       sync.RWMutex
 	rng      *rand.Rand
@@ -20,7 +24,11 @@ type System struct {
 	lastLoad time.Time
 }
 
-// NewSystem constructs an AI system and initializes behavior catalog.
+/*───────────────────────────────────────────────*
+ | INITIALIZATION                                |
+ *───────────────────────────────────────────────*/
+
+// NewSystem constructs an AI system and initializes the behavior catalog.
 func NewSystem(cat data.AIActionCatalog) *System {
 	sys := &System{
 		rng:     rand.New(rand.NewSource(time.Now().UnixNano())),
@@ -30,7 +38,10 @@ func NewSystem(cat data.AIActionCatalog) *System {
 	return sys
 }
 
-// OnDataReload updates AI catalog on file reload.
+/*───────────────────────────────────────────────*
+ | DATA RELOAD HOOK                              |
+ *───────────────────────────────────────────────*/
+
 func (s *System) OnDataReload(e events.DataReloaded, cat data.AIActionCatalog) {
 	if e.Type != "ai_catalog" {
 		return
@@ -42,18 +53,22 @@ func (s *System) OnDataReload(e events.DataReloaded, cat data.AIActionCatalog) {
 	fmt.Printf("[AI] Reloaded %d actions from ai.json\n", len(cat.Actions))
 }
 
+/*───────────────────────────────────────────────*
+ | CONTROLLER CREATION                           |
+ *───────────────────────────────────────────────*/
+
 // BuildControllerFromRefs instantiates a controller from action names.
-func (s *System) BuildControllerFromRefs(refs []string) *AIController {
+func (s *System) BuildControllerFromRefs(refs []string) *ecs.AIController {
 	if len(refs) == 0 {
 		return nil
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	ctrl := &AIController{Active: true}
+	ctrl := &ecs.AIController{Active: true}
 	for _, name := range refs {
 		if tpl, ok := s.catalog.Get(name); ok {
-			ctrl.Actions = append(ctrl.Actions, AIActionInstance{
+			ctrl.Actions = append(ctrl.Actions, ecs.AIActionInstance{
 				Name:     tpl.Name,
 				Type:     tpl.Type,
 				Priority: tpl.Priority,
@@ -67,6 +82,10 @@ func (s *System) BuildControllerFromRefs(refs []string) *AIController {
 	return ctrl
 }
 
+/*───────────────────────────────────────────────*
+ | UPDATE LOOP                                   |
+ *───────────────────────────────────────────────*/
+
 func (s *System) Update(w *ecs.World) {
 	if w == nil {
 		return
@@ -79,8 +98,8 @@ func (s *System) Update(w *ecs.World) {
 	}
 
 	manager.ForEach(func(e *ecs.Entity) {
-		ctrl, ok := e.Get("AIController").(*AIController)
-		if !ok || ctrl == nil || !ctrl.Active {
+		ctrl := ecs.GetTyped[*ecs.AIController](e, "AIController")
+		if ctrl == nil || !ctrl.Active {
 			return
 		}
 
@@ -100,4 +119,14 @@ func (s *System) Update(w *ecs.World) {
 }
 
 func (s *System) Draw(*ecs.World, *platform.Image) {}
+
+/*───────────────────────────────────────────────*
+ | HELPERS                                       |
+ *───────────────────────────────────────────────*/
+
+func (s *System) ensureRNG() {
+	if s.rng == nil {
+		s.rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
+}
 

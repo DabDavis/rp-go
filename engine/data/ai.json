@@ -7,13 +7,14 @@
       "params": {
         "speed": 2.8,
         "waypoints": [
-          {"x": 240, "y": 220},
-          {"x": 320, "y": 260},
-          {"x": 400, "y": 220},
-          {"x": 320, "y": 180}
+          { "x": 240, "y": 220 },
+          { "x": 320, "y": 260 },
+          { "x": 400, "y": 220 },
+          { "x": 320, "y": 180 }
         ]
       }
     },
+
     {
       "name": "pursue_player_close",
       "type": "pursue",
@@ -24,6 +25,7 @@
         "speed": 3.6
       }
     },
+
     {
       "name": "follow_leader",
       "type": "follow",
@@ -37,11 +39,14 @@
         "speed": 3.2
       }
     },
+
     {
       "name": "retreat_if_damaged",
       "type": "retreat",
       "priority": 2,
-      "conditions": { "health_lt": 0.5 },
+      "conditions": {
+        "health_lt": 0.5
+      },
       "params": {
         "target": "player",
         "trigger_distance": 220,
@@ -49,14 +54,23 @@
         "speed": 3.4
       }
     },
+
     {
       "name": "patrol_then_retreat",
       "type": "script",
       "priority": 0,
       "params": {
         "steps": [
-          { "action": "patrol_square", "delay_ms": 0 },
-          { "action": "retreat_if_damaged", "delay_ms": 500 }
+          {
+            "action": "patrol_square",
+            "params": { "speed": 2.8 },
+            "delay_ms": 0
+          },
+          {
+            "action": "retreat_if_damaged",
+            "params": { "target": "player" },
+            "delay_ms": 500
+          }
         ]
       }
     }

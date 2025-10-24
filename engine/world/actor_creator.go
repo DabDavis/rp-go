@@ -8,7 +8,13 @@ import (
 	"sync"
 )
 
-// ActorCreator spawns ECS entities from JSON-defined templates.
+/*───────────────────────────────────────────────*
+ | ACTOR CREATOR                                 |
+ *───────────────────────────────────────────────*/
+
+// ActorCreator spawns ECS entities from JSON-defined templates (actors.json).
+// It automatically assigns unique IDs, sets up base components,
+// and leaves AI binding to the AIComposer system.
 type ActorCreator struct {
 	templates map[string]data.ActorTemplate
 	counters  map[string]int
@@ -27,6 +33,10 @@ func NewActorCreator(db data.ActorDatabase) *ActorCreator {
 	}
 }
 
+/*───────────────────────────────────────────────*
+ | PRELOAD / CACHING                             |
+ *───────────────────────────────────────────────*/
+
 // PreloadImages warms the graphics cache for all known sprite paths.
 func (c *ActorCreator) PreloadImages() {
 	if c == nil {
@@ -43,6 +53,10 @@ func (c *ActorCreator) PreloadImages() {
 	}
 }
 
+/*───────────────────────────────────────────────*
+ | ENTITY SPAWNING                               |
+ *───────────────────────────────────────────────*/
+
 // Spawn instantiates an actor entity by template name and position.
 func (c *ActorCreator) Spawn(w *ecs.World, template string, pos ecs.Position) (*ecs.Entity, error) {
 	if c == nil {
@@ -58,26 +72,57 @@ func (c *ActorCreator) Spawn(w *ecs.World, template string, pos ecs.Position) (*
 	}
 
 	e := w.NewEntity()
-	e.Add(&ecs.Actor{
+
+	// --- Actor metadata
+	actor := &ecs.Actor{
 		ID:         c.nextID(template),
 		Archetype:  tpl.Archetype,
 		Persistent: tpl.Persistent,
-	})
-	e.Add(&ecs.Position{X: pos.X, Y: pos.Y})
+	}
+	e.Add(actor)
 
+	// --- Transform
+	e.Add(&ecs.Position{X: pos.X, Y: pos.Y})
 	if tpl.Velocity != nil {
 		e.Add(&ecs.Velocity{VX: tpl.Velocity.VX, VY: tpl.Velocity.VY})
 	}
 
+	// --- Sprite
 	if tpl.Sprite.Image != "" {
-		sprite := buildSprite(tpl.Sprite)
-		e.Add(sprite)
+		e.Add(buildSprite(tpl.Sprite))
 	}
 
-	if ai := buildAIController(tpl.AI); ai != nil {
-		e.Add(ai)
+	// --- AI references (deferred to AIComposer)
+	if len(tpl.AIRefs) > 0 {
+		// Store references directly in the Actor for AIComposer to process.
+		actor.AIRefs = append([]string{}, tpl.AIRefs...)
 	}
 
 	return e, nil
+}
+
+/*───────────────────────────────────────────────*
+ | HELPERS                                       |
+ *───────────────────────────────────────────────*/
+
+// nextID generates a unique per-template instance ID.
+func (c *ActorCreator) nextID(template string) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.counters[template]++
+	return fmt.Sprintf("%s-%03d", template, c.counters[template])
+}
+
+// buildSprite converts a JSON sprite definition into an ECS Sprite component.
+func buildSprite(st data.ActorSpriteTemplate) *ecs.Sprite {
+	img := gfx.LoadImage(st.Image)
+	return &ecs.Sprite{
+		Image:          img,
+		Width:          st.Width,
+		Height:         st.Height,
+		Rotation:       st.Rotation,
+		FlipHorizontal: st.FlipHorizontal,
+		PixelPerfect:   st.PixelPerfect,
+	}
 }
 
