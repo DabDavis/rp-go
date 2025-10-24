@@ -119,14 +119,3 @@ func (s *System) Update(w *ecs.World) {
 }
 
 func (s *System) Draw(*ecs.World, *platform.Image) {}
-
-/*───────────────────────────────────────────────*
- | HELPERS                                       |
- *───────────────────────────────────────────────*/
-
-func (s *System) ensureRNG() {
-	if s.rng == nil {
-		s.rng = rand.New(rand.NewSource(time.Now().UnixNano()))
-	}
-}
-

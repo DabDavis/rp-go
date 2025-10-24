@@ -4,70 +4,50 @@ import (
 	"fmt"
 
 	"rp-go/engine/ecs"
-	"rp-go/engine/events"
 	"rp-go/engine/gfx"
 	"rp-go/engine/platform"
-	"rp-go/engine/systems/aicomposer"
-	dataSys "rp-go/engine/systems/data"
 	"rp-go/engine/world"
 )
 
-type Scene struct {
-	initialized   bool
-	actorCreator  *world.ActorCreator
-	dataSystem    *dataSys.System
-	composer      *aicomposer.System
-}
-
-// Name returns the scene identifier.
-func (s *Scene) Name() string { return "space" }
-
 /*───────────────────────────────────────────────*
- | INITIALIZATION                                |
+ | SCENE STRUCTURE                               |
  *───────────────────────────────────────────────*/
 
+type Scene struct {
+	init     bool
+	ctx      *world.WorldContext
+}
+
+/*───────────────────────────────────────────────*
+ | CORE                                           |
+ *───────────────────────────────────────────────*/
+
+func (s *Scene) Name() string { return "space" }
+
 func (s *Scene) Init(w *ecs.World) {
-	if s.initialized {
+	if s.init {
 		return
 	}
-	s.initialized = true
-	fmt.Println("[SCENE] Initializing: Space")
+	s.init = true
+	fmt.Println("[SCENE] Init:", s.Name())
 
-	// -------------------------------------------------------------------------
-	// Resolve core systems (data + AIComposer)
-	// -------------------------------------------------------------------------
-	if s.dataSystem == nil {
-		if sys := w.FindSystem((*dataSys.System)(nil)); sys != nil {
-			s.dataSystem = sys.(*dataSys.System)
-		}
-	}
-	if s.composer == nil {
-		if sys := w.FindSystem((*aicomposer.System)(nil)); sys != nil {
-			s.composer = sys.(*aicomposer.System)
-		}
+	// ---------------------------------------------------------------------
+	// Initialize world context (Data + AI + Creator)
+	// ---------------------------------------------------------------------
+	s.ctx = world.InitWorld(w)
+	if s.ctx == nil || s.ctx.Creator == nil {
+		fmt.Println("[SCENE] Missing world context — cannot spawn entities")
+		return
 	}
 
-	// -------------------------------------------------------------------------
-	// Prepare ActorCreator using the centralized actor DB
-	// -------------------------------------------------------------------------
-	db := s.dataSystem.Actors
-	if len(db.Actors) == 0 {
-		db = s.dataSystem.Actors // ensures fallback even if uninitialized
-	}
-	s.actorCreator = world.NewActorCreator(db)
-	s.actorCreator.PreloadImages()
+	// ---------------------------------------------------------------------
+	// Preload additional shared assets
+	// ---------------------------------------------------------------------
+	gfx.PreloadImages("assets/entities/ship.png", "assets/entities/planet.png")
 
-	// -------------------------------------------------------------------------
-	// Warm Texture Cache
-	// -------------------------------------------------------------------------
-	gfx.PreloadImages(
-		"assets/entities/ship.png",
-		"assets/entities/planet.png",
-	)
-
-	// -------------------------------------------------------------------------
-	// === Player Ship ===
-	// -------------------------------------------------------------------------
+	// ---------------------------------------------------------------------
+	// Player Entity
+	// ---------------------------------------------------------------------
 	player := w.NewEntity()
 	player.Add(&ecs.Actor{
 		ID:         "player",
@@ -79,17 +59,17 @@ func (s *Scene) Init(w *ecs.World) {
 	player.Add(&ecs.PlayerInput{Enabled: true})
 	player.Add(&ecs.CameraTarget{})
 
-	playerImg := gfx.LoadImage("assets/entities/ship.png")
 	player.Add(&ecs.Sprite{
-		Image:        playerImg,
+		Image:        gfx.LoadImage("assets/entities/ship.png"),
 		Width:        64,
 		Height:       64,
 		PixelPerfect: true,
 	})
+	fmt.Printf("[SCENE] Player spawned (entity %d)\n", player.ID)
 
-	// -------------------------------------------------------------------------
-	// === Camera Entity ===
-	// -------------------------------------------------------------------------
+	// ---------------------------------------------------------------------
+	// Camera Entity
+	// ---------------------------------------------------------------------
 	cam := w.NewEntity()
 	camComp := &ecs.Camera{
 		X:      100,
@@ -98,25 +78,24 @@ func (s *Scene) Init(w *ecs.World) {
 		Target: player,
 	}
 	cam.Add(camComp)
-	fmt.Printf("[SCENE] Camera entity created (ID %d) -> %+v\n", cam.ID, *camComp)
+	fmt.Printf("[SCENE] Camera created (entity %d)\n", cam.ID)
 
-	// -------------------------------------------------------------------------
-	// === Planet Entity ===
-	// -------------------------------------------------------------------------
+	// ---------------------------------------------------------------------
+	// Planet Entity
+	// ---------------------------------------------------------------------
 	planet := w.NewEntity()
 	planet.Add(&ecs.Position{X: 350, Y: 180})
-	planetImg := gfx.LoadImage("assets/entities/planet.png")
 	planet.Add(&ecs.Sprite{
-		Image:        planetImg,
+		Image:        gfx.LoadImage("assets/entities/planet.png"),
 		Width:        128,
 		Height:       128,
 		PixelPerfect: true,
 	})
-	fmt.Printf("[SCENE] Planet entity created (ID %d)\n", planet.ID)
+	fmt.Printf("[SCENE] Planet created (entity %d)\n", planet.ID)
 
-	// -------------------------------------------------------------------------
-	// === Dark Elf Patrol ===
-	// -------------------------------------------------------------------------
+	// ---------------------------------------------------------------------
+	// Enemy Fleet (data-driven)
+	// ---------------------------------------------------------------------
 	templates := []string{
 		"dark-elf-ship-scout",
 		"dark-elf-ship-vanguard",
@@ -125,31 +104,25 @@ func (s *Scene) Init(w *ecs.World) {
 		"dark-elf-ship-commander",
 	}
 
-	for i, template := range templates {
-		spawnX := 260 + float64(i*72)
-		spawnY := 220.0
-		enemy, err := s.actorCreator.Spawn(w, template, ecs.Position{X: spawnX, Y: spawnY})
+	for i, name := range templates {
+		x := 260 + float64(i*72)
+		y := 220.0
+		enemy, err := s.ctx.Creator.Spawn(w, name, ecs.Position{X: x, Y: y})
 		if err != nil {
-			fmt.Printf("[SCENE] Failed to spawn patrol ship: %v\n", err)
+			fmt.Printf("[SCENE] Spawn failed for %s: %v\n", name, err)
 			continue
 		}
 
-		if actor := enemy.Get("Actor"); actor != nil {
-			if meta, ok := actor.(*ecs.Actor); ok {
-				fmt.Printf("[SCENE] Spawned %s (%s) [entity %d]\n", meta.ID, template, enemy.ID)
-			}
+		if meta, ok := enemy.Get("Actor").(*ecs.Actor); ok {
+			fmt.Printf("[SCENE] Spawned %s (%s) entity %d\n", meta.ID, name, enemy.ID)
 		}
 
-		// Notify the AIComposer to attach behavior
-		if s.composer != nil {
-			s.composer.BindEntityAI(w, enemy)
+		if s.ctx.AIComposer != nil {
+			s.ctx.AIComposer.BindEntityAI(w, enemy)
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Scene ready
-	// -------------------------------------------------------------------------
-	fmt.Println("[SCENE] Active:", s.Name())
+	fmt.Printf("[SCENE] Ready: %s\n", s.Name())
 }
 
 /*───────────────────────────────────────────────*
@@ -161,6 +134,7 @@ func (s *Scene) Update(w *ecs.World) {}
 func (s *Scene) Draw(w *ecs.World, screen *platform.Image) {}
 
 func (s *Scene) Unload(w *ecs.World) {
-	fmt.Println("[SCENE] Unloading:", s.Name())
+	fmt.Println("[SCENE] Unload:", s.Name())
+	s.ctx = nil
 }
 

@@ -12,14 +12,23 @@ import (
 	"rp-go/engine/ui/window"
 )
 
-// DebugWindow displays a real-time list of AIComposed entities and their behaviors.
+/*───────────────────────────────────────────────*
+ | DEBUG WINDOW STRUCTURE                        |
+ *───────────────────────────────────────────────*/
+
+// DebugWindow displays a real-time list of AI-composed entities
+// and their currently bound AI actions.
 type DebugWindow struct {
 	component *window.Component
 	content   *ComposerDebugContent
 	visible   bool
 }
 
-// NewDebugWindow constructs a new AIComposer debug overlay.
+/*───────────────────────────────────────────────*
+ | CONSTRUCTION / VISIBILITY                     |
+ *───────────────────────────────────────────────*/
+
+// NewDebugWindow constructs a new AI Composer debug overlay.
 func NewDebugWindow() *DebugWindow {
 	return &DebugWindow{
 		content: &ComposerDebugContent{
@@ -30,36 +39,36 @@ func NewDebugWindow() *DebugWindow {
 	}
 }
 
-// Ensure adds the window to the ECS world if missing.
+// Ensure adds the window to the ECS world if it hasn’t been added yet.
 func (w *DebugWindow) Ensure(world *ecs.World) {
-	if !w.visible || w.component != nil {
+	if !w.visible || w.component != nil || world == nil {
 		return
 	}
 
 	entity := world.NewEntity()
-	comp := window.NewComponent("debug.aicomposer", "AI Composer", window.Bounds{
-		X:      32,
-		Y:      320,
-		Width:  360,
-		Height: 160,
-	}, w.content)
+	comp := window.NewComponent(
+		"debug.aicomposer",
+		"AI Composer",
+		window.Bounds{X: 32, Y: 320, Width: 380, Height: 160},
+		w.content,
+	)
 
 	comp.Layer = ecs.LayerDebug
 	comp.Order = 50
 	comp.Movable = true
 	comp.Closable = true
-	comp.TitleBarHeight = 26
-	comp.Padding = 10
-	comp.Background = color.RGBA{18, 20, 30, 220}
-	comp.Border = color.RGBA{100, 140, 255, 180}
-	comp.TitleBar = color.RGBA{40, 60, 110, 230}
+	comp.TitleBarHeight = 24
+	comp.Padding = 8
+	comp.Background = color.RGBA{18, 20, 30, 230}
+	comp.Border = color.RGBA{80, 120, 255, 180}
+	comp.TitleBar = color.RGBA{30, 50, 100, 220}
 	comp.TitleColor = color.RGBA{235, 245, 255, 255}
 
 	entity.Add(comp)
 	w.component = comp
 }
 
-// Update refreshes the content text from ECS world data.
+// Update refreshes the window’s content from the composer system.
 func (w *DebugWindow) Update(world *ecs.World, composer *System) {
 	if !w.visible || w.component == nil {
 		return
@@ -68,7 +77,7 @@ func (w *DebugWindow) Update(world *ecs.World, composer *System) {
 	w.component.Bounds.Height = w.content.estimateHeight()
 }
 
-// Hide toggles visibility.
+// Hide toggles visibility off.
 func (w *DebugWindow) Hide() {
 	w.visible = false
 	if w.component != nil {
@@ -85,6 +94,10 @@ type ComposerDebugContent struct {
 	lineHeight     int
 	baselineOffset int
 }
+
+/*───────────────────────────────────────────────*
+ | REFRESH LOGIC                                 |
+ *───────────────────────────────────────────────*/
 
 // Refresh rebuilds the entity/action list from the composer state.
 func (c *ComposerDebugContent) Refresh(world *ecs.World, composer *System) {
@@ -105,59 +118,72 @@ func (c *ComposerDebugContent) Refresh(world *ecs.World, composer *System) {
 		return
 	}
 
-	lines := make([]string, 0, len(composer.processed)+4)
-	lines = append(lines, "AI Composer Active Entities:")
-	lines = append(lines, "--------------------------------")
+	lines := []string{
+		"AI Composer Active Entities:",
+		"--------------------------------",
+	}
 
-	// Sort IDs for deterministic order
+	// Collect and sort processed IDs
 	var ids []ecs.EntityID
 	for id := range composer.processed {
 		ids = append(ids, id)
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 
-	for _, id := range ids {
-		e := world.GetEntity(id)
+	// Lookup each entity safely
+	manager := world.EntitiesManager()
+	if manager == nil {
+		c.lines = []string{"(no entity manager available)"}
+		return
+	}
+
+	manager.ForEach(func(e *ecs.Entity) {
 		if e == nil {
-			continue
+			return
+		}
+		if !composer.processed[e.ID] {
+			return
 		}
 
 		act, _ := e.Get("Actor").(*ecs.Actor)
-		ctrl, _ := e.Get("AIController").(*AIController)
+		ctrl, _ := e.Get("AIController").(*ecs.AIController)
 		if act == nil || ctrl == nil {
-			continue
+			return
 		}
 
-		line := fmt.Sprintf("[%3d] %-20s  (%d actions)", id, act.ID, len(ctrl.Actions))
-		lines = append(lines, line)
-
+		lines = append(lines, fmt.Sprintf("[%3d] %-18s (%d actions)", e.ID, act.ID, len(ctrl.Actions)))
 		for _, a := range ctrl.Actions {
 			lines = append(lines, fmt.Sprintf("   • %s [%s]", a.Name, a.Type))
 		}
-	}
+	})
 
 	c.lines = lines
 }
 
-// Draw renders the text into the debug window.
+/*───────────────────────────────────────────────*
+ | DRAW FUNCTION                                 |
+ *───────────────────────────────────────────────*/
+
 func (c *ComposerDebugContent) Draw(_ *ecs.World, dst *platform.Image, bounds window.Bounds) {
 	if dst == nil || len(c.lines) == 0 {
 		return
 	}
 
-	baseline := bounds.Y + c.baselineOffset
+	y := bounds.Y + c.baselineOffset
 	for _, line := range c.lines {
-		platform.DrawText(dst, line, basicfont.Face7x13, bounds.X+4, baseline, color.RGBA{220, 235, 255, 255})
-		baseline += c.lineHeight
+		platform.DrawText(dst, line, basicfont.Face7x13, bounds.X+4, y, color.RGBA{220, 235, 255, 255})
+		y += c.lineHeight
 	}
 }
 
-// estimateHeight computes the needed height for all lines.
+/*───────────────────────────────────────────────*
+ | SIZE HELPER                                   |
+ *───────────────────────────────────────────────*/
+
 func (c *ComposerDebugContent) estimateHeight() int {
-	min := 48
 	h := len(c.lines)*c.lineHeight + 32
-	if h < min {
-		return min
+	if h < 64 {
+		return 64
 	}
 	return h
 }

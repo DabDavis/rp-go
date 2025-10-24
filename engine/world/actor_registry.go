@@ -1,21 +1,50 @@
 package world
 
-import "rp-go/engine/systems/actor"
+import (
+	"rp-go/engine/ecs"
+)
 
-// GlobalActorRegistry provides an optional shared registry instance for world-level queries.
-// This is useful for scripting, triggers, or saving/loading state.
-var GlobalActorRegistry *actor.Registry
+/*───────────────────────────────────────────────*
+ | ACTOR REGISTRY ADAPTER                        |
+ *───────────────────────────────────────────────*/
 
-// SetGlobalRegistry assigns a shared actor registry from the active ActorSystem.
-func SetGlobalRegistry(r *actor.Registry) {
-	GlobalActorRegistry = r
+// ActorRegistryAdapter is a helper for systems or tools that need
+// to query ECS actors without depending on systems/actor directly.
+type ActorRegistryAdapter struct {
+	World *ecs.World
 }
 
-// Actors returns a sorted snapshot of all active actor entities.
-func Actors() []*actor.Registry {
-	if GlobalActorRegistry == nil {
+// FindByID looks up an entity with a matching Actor.ID.
+func (r *ActorRegistryAdapter) FindByID(id string) (*ecs.Entity, bool) {
+	if r == nil || r.World == nil {
+		return nil, false
+	}
+	manager := r.World.EntitiesManager()
+	found := (*ecs.Entity)(nil)
+	manager.ForEach(func(e *ecs.Entity) {
+		if found != nil {
+			return
+		}
+		act, _ := e.Get("Actor").(*ecs.Actor)
+		if act != nil && act.ID == id {
+			found = e
+		}
+	})
+	return found, found != nil
+}
+
+// All returns all entities with an Actor component.
+func (r *ActorRegistryAdapter) All() []*ecs.Entity {
+	if r == nil || r.World == nil {
 		return nil
 	}
-	return []*actor.Registry{GlobalActorRegistry}
+	out := []*ecs.Entity{}
+	manager := r.World.EntitiesManager()
+	manager.ForEach(func(e *ecs.Entity) {
+		if e.Has("Actor") {
+			out = append(out, e)
+		}
+	})
+	return out
 }
 

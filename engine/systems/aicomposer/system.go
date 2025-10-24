@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sync"
 
-	"rp-go/engine/data"
 	"rp-go/engine/ecs"
 	"rp-go/engine/events"
 	"rp-go/engine/systems/ai"
+	dataSys "rp-go/engine/systems/data"
 )
 
 /*───────────────────────────────────────────────*
@@ -15,24 +15,27 @@ import (
  *───────────────────────────────────────────────*/
 
 // System automatically binds AIControllers to entities with Actor.AIRefs.
-// It also listens for AI catalog reloads to clear its cache.
+// It listens for data reloads and clears its internal cache when needed.
 type System struct {
-	data     *data.System // global data (actors, AI catalog, etc.)
-	ai       *ai.System   // AI logic and behavior execution
-	mu       sync.RWMutex
-	processed map[ecs.EntityID]bool // cache of entities already composed
-	reloadFlag bool                  // set to true when ai.json is reloaded
+	data       *dataSys.System
+	ai         *ai.System
+	mu         sync.RWMutex
+	processed  map[ecs.EntityID]bool // cache of already composed entities
+	reloadFlag bool                  // true when ai.json is reloaded
 }
 
 /*───────────────────────────────────────────────*
  | CONSTRUCTOR                                   |
  *───────────────────────────────────────────────*/
 
-// NewSystem initializes an AIComposer instance.
-func NewSystem(dataSys *data.System, aiSys *ai.System) *System {
+// NewSystem links the AIComposer to the data + AI systems.
+func NewSystem(data *dataSys.System, ai *ai.System) *System {
+	if data == nil || ai == nil {
+		fmt.Println("[AICOMPOSER] Warning: constructed with nil dependencies")
+	}
 	return &System{
-		data:      dataSys,
-		ai:        aiSys,
+		data:      data,
+		ai:        ai,
 		processed: make(map[ecs.EntityID]bool),
 	}
 }
@@ -41,8 +44,8 @@ func NewSystem(dataSys *data.System, aiSys *ai.System) *System {
  | ECS UPDATE LOOP                               |
  *───────────────────────────────────────────────*/
 
-// Update scans entities and attaches AIControllers if missing.
-// Uses caching to skip already processed entities.
+// Update scans the ECS world for new entities with Actor.AIRefs and
+// attaches AIController components generated from the AI catalog.
 func (s *System) Update(w *ecs.World) {
 	if w == nil || s.data == nil || s.ai == nil {
 		return
@@ -56,33 +59,32 @@ func (s *System) Update(w *ecs.World) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Rebuild on data reload
 	if s.reloadFlag {
-		// AI catalog changed — rebind all entities
-		fmt.Println("[AICOMPOSER] Reload detected — clearing cache for rebind")
+		fmt.Println("[AICOMPOSER] Data reload detected — resetting AI bindings")
 		s.processed = make(map[ecs.EntityID]bool)
 		s.reloadFlag = false
 	}
 
 	manager.ForEach(func(e *ecs.Entity) {
 		id := e.ID
-
-		// Skip if already processed
 		if s.processed[id] {
 			return
 		}
 
 		actor, _ := e.Get("Actor").(*ecs.Actor)
 		if actor == nil || len(actor.AIRefs) == 0 {
-			s.processed[id] = true // mark as known
-			return
-		}
-
-		// Skip if AIController already exists
-		if _, exists := e.Get("AIController").(*ai.AIController); exists {
 			s.processed[id] = true
 			return
 		}
 
+		// Skip if already has a controller
+		if _, ok := e.Get("AIController").(*ecs.AIController); ok {
+			s.processed[id] = true
+			return
+		}
+
+		// Build controller
 		ctrl := s.ai.BuildControllerFromRefs(actor.AIRefs)
 		if ctrl == nil {
 			return
@@ -90,16 +92,16 @@ func (s *System) Update(w *ecs.World) {
 
 		e.AddNamed("AIController", ctrl)
 		s.processed[id] = true
-		fmt.Printf("[AICOMPOSER] Bound %d AI actions to %q (entity %d)\n", len(ctrl.Actions), actor.ID, e.ID)
+		fmt.Printf("[AICOMPOSER] Bound %d AI actions to %q (entity %d)\n",
+			len(ctrl.Actions), actor.ID, e.ID)
 	})
 }
 
 /*───────────────────────────────────────────────*
- | HOT RELOAD SUPPORT                            |
+ | DATA RELOAD HOOK                              |
  *───────────────────────────────────────────────*/
 
-// OnDataReload refreshes AI references when ai.json changes.
-// This ensures that all controllers will be rebuilt next frame.
+// OnDataReload ensures AIComposer responds to AI catalog changes.
 func (s *System) OnDataReload(e events.DataReloaded) {
 	if e.Type != "ai_catalog" {
 		return
@@ -108,18 +110,11 @@ func (s *System) OnDataReload(e events.DataReloaded) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.data == nil || s.ai == nil {
-		return
-	}
+	fmt.Println("[AICOMPOSER] AI catalog updated — rebuilding controller catalog")
 
-	fmt.Println("[AICOMPOSER] AI catalog updated — reinitializing controller catalog")
-
-	// Rebuild AI lookup
-	if s.data.AICatalog.Actions != nil {
+	if s.data != nil && s.ai != nil {
 		s.ai.OnDataReload(e, s.data.AICatalog)
 	}
-
-	// Mark for next-frame rebuild
 	s.reloadFlag = true
 }
 
@@ -127,5 +122,5 @@ func (s *System) OnDataReload(e events.DataReloaded) {
  | DRAW (NO-OP)                                  |
  *───────────────────────────────────────────────*/
 
-func (s *System) Draw(_ *ecs.World, _ *ai.System) {}
+func (s *System) Draw(_ *ecs.World, _ *ecs.World) {}
 
