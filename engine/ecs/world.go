@@ -9,13 +9,14 @@ import (
 )
 
 /*───────────────────────────────────────────────*
- | WORLD STRUCTURE                               |
- *───────────────────────────────────────────────*/
+| WORLD STRUCTURE                               |
+*───────────────────────────────────────────────*/
 
 // World owns all entities, systems, and draw layers.
 type World struct {
 	nextID        EntityID
 	Entities      []*Entity
+	entitiesByID  map[EntityID]*Entity
 	Systems       []System
 	EventBus      any
 	entityManager *EntityManager
@@ -40,8 +41,8 @@ type drawEntry struct {
 }
 
 /*───────────────────────────────────────────────*
- | CONSTRUCTOR                                  |
- *───────────────────────────────────────────────*/
+| CONSTRUCTOR                                  |
+*───────────────────────────────────────────────*/
 
 func NewWorld() *World {
 	w := &World{
@@ -51,18 +52,23 @@ func NewWorld() *World {
 		Systems:       make([]System, 0, 16),
 		Entities:      make([]*Entity, 0, 256),
 	}
+	w.entitiesByID = make(map[EntityID]*Entity, 256)
 	w.entityManager = newEntityManager(w)
 	return w
 }
 
 /*───────────────────────────────────────────────*
- | ENTITY MANAGEMENT                            |
- *───────────────────────────────────────────────*/
+| ENTITY MANAGEMENT                            |
+*───────────────────────────────────────────────*/
 
 func (w *World) NewEntity() *Entity {
 	e := NewEntity(w.nextID)
 	w.nextID++
 	w.Entities = append(w.Entities, e)
+	if w.entitiesByID == nil {
+		w.entitiesByID = make(map[EntityID]*Entity, len(w.Entities))
+	}
+	w.entitiesByID[e.ID] = e
 	return e
 }
 
@@ -73,6 +79,9 @@ func (w *World) RemoveEntity(target *Entity) {
 	for i, e := range w.Entities {
 		if e == target {
 			w.Entities = append(w.Entities[:i], w.Entities[i+1:]...)
+			if w.entitiesByID != nil {
+				delete(w.entitiesByID, target.ID)
+			}
 			break
 		}
 	}
@@ -82,12 +91,20 @@ func (w *World) RemoveEntityByID(id EntityID) {
 	if w == nil {
 		return
 	}
-	for _, e := range w.Entities {
-		if e != nil && e.ID == id {
-			w.RemoveEntity(e)
-			return
-		}
+	if target := w.GetEntity(id); target != nil {
+		w.RemoveEntity(target)
 	}
+}
+
+// GetEntity returns the entity matching the provided ID or nil if missing.
+func (w *World) GetEntity(id EntityID) *Entity {
+	if w == nil {
+		return nil
+	}
+	if w.entitiesByID == nil {
+		return nil
+	}
+	return w.entitiesByID[id]
 }
 
 // EntitiesManager returns the entity manager for iteration utilities.
@@ -102,8 +119,8 @@ func (w *World) EntitiesManager() *EntityManager {
 }
 
 /*───────────────────────────────────────────────*
- | SYSTEM MANAGEMENT                            |
- *───────────────────────────────────────────────*/
+| SYSTEM MANAGEMENT                            |
+*───────────────────────────────────────────────*/
 
 // AddSystem registers a new system into the ECS world.
 func (w *World) AddSystem(s System) {
@@ -137,12 +154,13 @@ func (w *World) AddSystem(s System) {
 }
 
 /*───────────────────────────────────────────────*
- | SYSTEM LOOKUP                                |
- *───────────────────────────────────────────────*/
+| SYSTEM LOOKUP                                |
+*───────────────────────────────────────────────*/
 
 // FindSystem returns the first system matching the given type.
 // Example usage:
-//   ai := w.FindSystem((*ai.System)(nil)).(*ai.System)
+//
+//	ai := w.FindSystem((*ai.System)(nil)).(*ai.System)
 func (w *World) FindSystem(ptrType any) System {
 	if w == nil || ptrType == nil {
 		return nil
@@ -164,8 +182,8 @@ func sameType(a, b any) bool {
 }
 
 /*───────────────────────────────────────────────*
- | UPDATE LOOP                                  |
- *───────────────────────────────────────────────*/
+| UPDATE LOOP                                  |
+*───────────────────────────────────────────────*/
 
 var EnableProfiling bool // Toggle profiling per system
 
@@ -185,8 +203,8 @@ func (w *World) Update() {
 }
 
 /*───────────────────────────────────────────────*
- | DRAWING PIPELINE                             |
- *───────────────────────────────────────────────*/
+| DRAWING PIPELINE                             |
+*───────────────────────────────────────────────*/
 
 func (w *World) DrawWorld(screen *platform.Image) {
 	w.drawLayerGroup(screen, w.worldLayers)
@@ -220,8 +238,8 @@ func (w *World) drawLayerGroup(screen *platform.Image, layers []DrawLayer) {
 }
 
 /*───────────────────────────────────────────────*
- | LAYER MANAGEMENT                             |
- *───────────────────────────────────────────────*/
+| LAYER MANAGEMENT                             |
+*───────────────────────────────────────────────*/
 
 func (w *World) ensureLayerRegistered(layer DrawLayer) {
 	if _, exists := w.drawBuckets[layer]; !exists {
@@ -243,8 +261,8 @@ func (w *World) SetOverlayLayers(layers ...DrawLayer) {
 }
 
 /*───────────────────────────────────────────────*
- | INTERNAL HELPERS                             |
- *───────────────────────────────────────────────*/
+| INTERNAL HELPERS                             |
+*───────────────────────────────────────────────*/
 
 func systemPriority(s System) int {
 	if ps, ok := s.(PrioritizedSystem); ok {
@@ -298,4 +316,3 @@ func uniqueLayers(layers []DrawLayer) []DrawLayer {
 func isOverlayLayer(layer DrawLayer) bool {
 	return layer >= LayerHUD
 }
-

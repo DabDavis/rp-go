@@ -23,11 +23,12 @@ import (
 	"rp-go/engine/systems/render"
 	"rp-go/engine/systems/scene"
 	"rp-go/engine/systems/windowmgr"
+	"rp-go/engine/world"
 )
 
 /*───────────────────────────────────────────────*
- | GAME WORLD                                    |
- *───────────────────────────────────────────────*/
+| GAME WORLD                                    |
+*───────────────────────────────────────────────*/
 
 type GameWorld struct {
 	World  *ecs.World
@@ -35,8 +36,8 @@ type GameWorld struct {
 }
 
 /*───────────────────────────────────────────────*
- | INITIALIZATION                                |
- *───────────────────────────────────────────────*/
+| INITIALIZATION                                |
+*───────────────────────────────────────────────*/
 
 func NewGameWorld() *GameWorld {
 	// -------------------------------------------------------------------------
@@ -69,7 +70,9 @@ func NewGameWorld() *GameWorld {
 	composerSystem := aicomposer.NewSystem(dataSystem, aiSystem)
 
 	// --- Developer + Debug Layer --------------------------------------------
-	consoleSystem := devconsole.NewSystem(actorSystem.Registry(), devconsole.Config{
+	consoleSystem := devconsole.NewSystem(actorSystem.Registry(), func() devconsole.ActorSpawner {
+		return world.NewActorCreator(dataSystem.ActorDatabase())
+	}, devconsole.Config{
 		Margin:         16,
 		ViewportWidth:  cfg.Viewport.Width,
 		ViewportHeight: cfg.Viewport.Height,
@@ -138,6 +141,11 @@ func NewGameWorld() *GameWorld {
 		w.AddSystem(sys)
 	}
 
+	if sub := dataSystem.Subscriber(); sub != nil {
+		sub.Register("actor_db", consoleSystem.OnDataReload)
+		sub.Register("all", consoleSystem.OnDataReload)
+	}
+
 	// -------------------------------------------------------------------------
 	// Initial Scene Setup
 	// -------------------------------------------------------------------------
@@ -153,8 +161,8 @@ func NewGameWorld() *GameWorld {
 }
 
 /*───────────────────────────────────────────────*
- | MAIN LOOP                                     |
- *───────────────────────────────────────────────*/
+| MAIN LOOP                                     |
+*───────────────────────────────────────────────*/
 
 // Update advances the world simulation by one frame and flushes events.
 func (g *GameWorld) Update() {
@@ -169,4 +177,3 @@ func (g *GameWorld) Update() {
 func (g *GameWorld) Draw(screen *platform.Image) {
 	g.World.DrawWorld(screen)
 }
-
